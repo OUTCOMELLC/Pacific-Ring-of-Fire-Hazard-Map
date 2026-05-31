@@ -53,6 +53,15 @@
     background:var(--panel2);padding:13px 16px;margin-bottom:22px;font-size:13px;color:#B8C0CE;line-height:1.55;}
   .note b{color:var(--orange);font-weight:600;}
   .note .m{font-family:var(--mono);font-size:11px;color:var(--muted);}
+  .verify{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:11px;line-height:1.5;}
+  .verify a{color:var(--blue);text-decoration:none;}
+  .verify a:hover{color:var(--orange);text-decoration:underline;}
+  .blegend{border:1px solid var(--border);background:var(--panel2);padding:13px 16px;margin-bottom:22px;}
+  .blegend h4{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:11px;}
+  .blegend .lv{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:12px;}
+  .blegend .sig{font-family:var(--mono);font-size:11px;color:#B8C0CE;line-height:1.8;}
+  .blegend .sig b{color:#C7CEDB;font-weight:600;}
+  .blegend .pill{font-family:var(--mono);font-size:10px;color:var(--muted);border:1px solid var(--border);padding:1px 6px;margin-left:2px;}
 
   /* GLOBAL STRIP */
   .gstrip{display:grid;grid-template-columns:1fr 1.35fr;gap:16px;margin-bottom:22px;}
@@ -215,7 +224,23 @@
     <span class="m" style="display:block;margin-top:8px;">Earthquakes, volcanoes &amp; geomagnetic (solar) activity do <b style="color:#C7CEDB">not</b> forecast weather — no physical mechanism links them. Think <b style="color:#C7CEDB">Earth · Fire · Magnetism</b>: a <b style="color:#C7CEDB">separate</b> seismic / tsunami / ashfall / space-weather layer for awareness only. <b style="color:#C7CEDB">Wind &amp; Water</b> — atmosphere, ocean &amp; moon — drive the actual forecast.</span>
   </div>
 
-  <div id="diag"></div>
+  <div class="blegend">
+    <h4>Weather-risk badge · how the score works</h4>
+    <div class="lv">
+      <span class="badge b-CALM"><span class="dot"></span>Calm — score 0–2</span>
+      <span class="badge b-WATCH"><span class="dot"></span>Watch — score 3–5</span>
+      <span class="badge b-WARNING"><span class="dot"></span>Warning — score 6+</span>
+    </div>
+    <div class="sig">
+      Points add from the signals below; the chips on each card show which ones fired. A red chip = a single critical signal.<br>
+      <b>Pressure</b> low<span class="pill">+1→3</span> · rapid fall<span class="pill">+1→2</span> &nbsp;
+      <b>Wind gusts</b> strong→storm-force<span class="pill">+1→3</span> &nbsp;
+      <b>Rain</b> probability / heavy total<span class="pill">+1→2</span> &nbsp;
+      <b>Surf / swell</b> elevated→very high<span class="pill">+1→3</span> &nbsp;
+      <b>Thunderstorms</b><span class="pill">+1→2</span> &nbsp;
+      <b>Instability</b> (CAPE) / low-level shear<span class="pill">+1→3</span>
+    </div>
+  </div>
 
   <div id="globalstrip"></div>
 
@@ -312,7 +337,7 @@ async function fetchColumn(L){
 }
 async function fetchMarine(L){
   const u=`https://marine-api.open-meteo.com/v1/marine?latitude=${L.mLat}&longitude=${L.mLon}`
-   +`&current=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period`
+   +`&current=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,sea_surface_temperature`
    +`&hourly=wave_height&timezone=auto&forecast_days=2`;
   return getJSON(u);
 }
@@ -358,6 +383,15 @@ function moonPhase(date){
   const isSpring=age<2||age>27.5||Math.abs(age-14.77)<2;       // new / full -> max tidal range
   const isNeap=Math.abs(age-7.38)<1.8||Math.abs(age-22.15)<1.8;// quarters -> min range
   return {age,illum,name:n[1],emoji:n[2],isSpring,isNeap};
+}
+// Approximate solunar feeding periods (local-clock, lunar-transit model).
+function fmtH(h){h=((h%24)+24)%24;const hh=Math.floor(h),mm=Math.round((h-hh)*60)%60;return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');}
+function solunar(age){
+  const up=(12+age*24/29.530588853)%24;          // moon overhead (upper transit) ~local time
+  const low=(up+12.42)%24;                         // moon underfoot (lower transit)
+  const majors=[up,low].sort((a,b)=>a-b);          // major feeding periods
+  const minors=[(up+6.21)%24,(up-6.21+24)%24].sort((a,b)=>a-b); // ~moonrise / moonset
+  return {majors,minors};
 }
 
 // ---- scoring (transparent) ----
@@ -490,6 +524,12 @@ function renderCard(L, data){
   }
   const fogLink=L.id==='sf'?' · <a href="https://fog.today/" target="_blank" rel="noopener" style="color:var(--blue)">live SF fog satellite ↗</a>':'';
 
+  // official watch/warning authority for this city (JMA for Japan, NWS for US)
+  const JMA_OFFICE={hk:'400000',ng:'420000',mz:'450000',ho:'130000',tb:'130000'};
+  const verifyLink = L.tz==='Asia/Tokyo'
+    ? `<a href="https://www.jma.go.jp/bosai/warning/#area_type=offices&amp;area_code=${JMA_OFFICE[L.id]||'010000'}" target="_blank" rel="noopener">JMA 気象警報・注意報 ↗</a>`
+    : `<a href="https://forecast.weather.gov/MapClick.php?lat=${L.lat}&amp;lon=${L.lon}" target="_blank" rel="noopener">NWS forecast &amp; alerts ↗</a>`;
+
   const cMax=R.capeMax;
   const capeLab = cMax==null?['—','var(--muted)'] : cMax>2500?['Extreme','var(--red)'] : cMax>1000?['Strong','var(--amber)'] : cMax>300?['Moderate','#C7CEDB'] : ['Minimal','var(--green)'];
   const stab = cMax==null?['—','var(--muted)']
@@ -509,6 +549,17 @@ function renderCard(L, data){
 
   // moon phase -> spring/neap tide cross-reference
   const moon=moonPhase(new Date());
+  // angler layer: sea-surface temp, solunar feeding windows, lunar-tidal spawning cue
+  const sst = M&&M.current ? M.current.sea_surface_temperature : null;
+  const sol = solunar(moon.age);
+  const majTxt = `${fmtH(sol.majors[0])} · ${fmtH(sol.majors[1])}`;
+  const minTxt = `${fmtH(sol.minors[0])} · ${fmtH(sol.minors[1])}`;
+  let spawnCls='ok', spawnMsg;
+  if(sst==null) spawnMsg='Spawning cue — no sea-surface-temp data';
+  else if(moon.isSpring && sst>=20){ spawnCls='warn'; spawnMsg=`Spawning window favorable — spring tide + SST ${num(sst,0)}°C (oyster / bivalve cue)`; }
+  else if(moon.isSpring && sst>=16) spawnMsg=`Spring tide now · SST ${num(sst,0)}°C — approaching the ~20°C spawning band`;
+  else if(sst>=20) spawnMsg=`SST ${num(sst,0)}°C in band, but ${moon.isNeap?'neap':'mid'} tide — next spring tide is the trigger`;
+  else spawnMsg=`Outside spawning cue · SST ${num(sst,0)}°C · ${moon.isSpring?'spring':moon.isNeap?'neap':'mid'} tide`;
   const springEff = moon.isSpring ? SURF_FLOOD_M-0.6 : SURF_FLOOD_M;  // spring high water lowers the surf threshold for flooding
   const moonLine=`<div style="display:flex;align-items:center;gap:11px;margin-bottom:13px;font-family:var(--mono);font-size:11px;color:var(--muted)">
      <span style="font-size:22px;line-height:1">${moon.emoji}</span>
@@ -581,6 +632,7 @@ function renderCard(L, data){
         <div class="ro"><div class="k">Rain prob</div><div class="v">${num(R.maxPP,0)}<small>%</small></div></div>
       </div>
       <div class="chips">${chips}</div>
+      <div class="verify">⚠ This badge is a heads-up — verify official watches/warnings: ${verifyLink}</div>
     </div>
 
     <div class="sect">
@@ -611,6 +663,17 @@ function renderCard(L, data){
       <h3><span class="ic">🌙</span>Tides &amp; coastal flooding</h3>
       ${tideHTML}
       ${floodHTML}
+    </div>
+
+    <div class="sect">
+      <h3><span class="ic">🎣</span>Angler · solunar &amp; spawning<span class="tag">LUNAR-TIDAL · APPROX</span></h3>
+      <div class="readouts">
+        <div class="ro"><div class="k">Sea-surface temp</div><div class="v">${sst!=null?num(sst,1):'—'}<small>°C</small></div></div>
+        <div class="ro"><div class="k">Major bite</div><div class="v" style="font-size:15px">${majTxt}</div></div>
+        <div class="ro"><div class="k">Minor bite</div><div class="v" style="font-size:15px">${minTxt}</div></div>
+      </div>
+      <div class="flood ${spawnCls}" style="margin-top:11px">🦪 ${spawnMsg}</div>
+      <div class="indep">Solunar windows are approximate (lunar-transit model) &amp; in local time — peak feeding clusters near them. Spawning cue = spring tide (new/full moon) + water temp in the ~20 °C band: indicative for oysters &amp; many bivalves, not a guarantee.</div>
     </div>
 
     <div class="sect">
