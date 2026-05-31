@@ -22,6 +22,10 @@
   .hctl{margin-left:auto;display:flex;align-items:center;gap:13px;font-family:var(--mono);font-size:11px;color:var(--muted);}
   button.rf{font-family:var(--mono);font-size:11px;letter-spacing:.06em;background:transparent;color:var(--text);border:1px solid var(--border);padding:8px 13px;cursor:pointer;text-transform:uppercase;}
   button.rf:hover{border-color:var(--orange);color:var(--orange);}
+  .nav{display:flex;gap:4px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;margin-bottom:14px;}
+  .nav a{color:var(--muted);text-decoration:none;padding:5px 11px;border:1px solid var(--border);letter-spacing:.04em;transition:.15s;}
+  .nav a:hover{color:#fff;border-color:var(--muted);}
+  .nav a.on{color:#0B0F19;background:var(--orange);border-color:var(--orange);font-weight:600;}
 
   .tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:14px;flex-wrap:wrap;}
   .tab{font-family:var(--mono);font-size:12px;letter-spacing:.04em;padding:10px 15px;cursor:pointer;color:var(--muted);
@@ -39,6 +43,21 @@
   #tip a{color:var(--blue);}
   .bpt{cursor:pointer;}
 
+  /* click-to-pin live buoy info panel */
+  #binfo{position:absolute;top:10px;right:10px;z-index:60;display:none;width:236px;
+    background:rgba(11,15,25,.96);border:1px solid var(--border);border-left:3px solid var(--teal);
+    padding:12px 14px;font-family:var(--mono);font-size:11.5px;line-height:1.5;box-shadow:0 8px 26px rgba(0,0,0,.55);}
+  #binfo .bx{position:absolute;top:7px;right:9px;cursor:pointer;color:var(--muted);}
+  #binfo .bx:hover{color:var(--orange);}
+  #binfo .nm{font-family:var(--disp);font-size:15px;font-weight:700;letter-spacing:.01em;padding-right:14px;}
+  #binfo .co{color:var(--muted);font-size:10px;margin:4px 0 10px;}
+  #binfo .rw{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid rgba(31,41,55,.6);}
+  #binfo .rw .k{color:var(--muted);}
+  #binfo .rw .val{color:#E5E9F0;text-align:right;}
+  #binfo .big{font-size:20px;font-weight:600;}
+  #binfo .src{color:var(--dim);font-size:9.5px;margin-top:10px;line-height:1.5;}
+  @media(max-width:560px){#binfo{position:fixed;left:12px;right:12px;width:auto;bottom:12px;top:auto;}}
+
   .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-family:var(--mono);font-size:10.5px;color:#C7CEDB;align-items:center;}
   .legend .grp{display:flex;gap:9px;align-items:center;}
   .legend i{width:11px;height:11px;border-radius:50%;display:inline-block;}
@@ -49,6 +68,12 @@
 </head>
 <body>
 <div class="wrap">
+  <nav class="nav">
+    <a href="index.html">⌂ Home</a>
+    <a href="ring-of-fire-map.html">🌋 Ring of Fire Map</a>
+    <a href="pacific-hazard.html">🛰 Dashboard</a>
+    <a href="coastal-chart-plot.html" class="on">🛟 Buoy Chart</a>
+  </nav>
   <header>
     <div class="mark"></div>
     <div><h1>Coastal Buoy Chart Plot<span class="s">Lat/Lon graticule · live significant wave height per station</span></h1></div>
@@ -58,6 +83,7 @@
   <div class="tabs" id="tabs"></div>
   <div class="plotwrap">
     <div class="readout" id="readout">cursor —</div>
+    <div id="binfo"></div>
     <div id="plot"></div>
   </div>
 
@@ -128,6 +154,7 @@ const latLabel=la=>Math.abs(Math.round(la))+'°'+(la<0?'S':'N');
 
 function render(key){
   CUR=key; const v=VIEWS[key];
+  const _bi=document.getElementById('binfo'); if(_bi) _bi.style.display='none';
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.k===key));
   const W=1000, pad={l:48,r:18,t:18,b:34};
   const midLat=(v.latMin+v.latMax)/2, cosM=Math.cos(midLat*Math.PI/180);
@@ -143,18 +170,18 @@ function render(key){
   const lo0=Math.ceil(v.lonMin/v.step)*v.step;
   for(let lon=lo0;lon<=v.lonMax;lon+=v.step){
     const x=X(lon).toFixed(1);
-    g+=`<line x1="${x}" y1="${pad.t}" x2="${x}" y2="${pad.t+plotH}" stroke="var(--grid)" stroke-width="1"/>`;
-    g+=`<text x="${x}" y="${(pad.t+plotH+20).toFixed(1)}" fill="var(--muted)" font-size="10" font-family="DM Mono" text-anchor="middle">${lonLabel(lon)}</text>`;
+    g+=`<line x1="${x}" y1="${pad.t}" x2="${x}" y2="${pad.t+plotH}" stroke="rgba(59,130,246,.16)" stroke-width="1"/>`;
+    g+=`<text x="${x}" y="${(pad.t+plotH+20).toFixed(1)}" fill="#6B7280" font-size="10" font-family="DM Mono" text-anchor="middle">${lonLabel(lon)}</text>`;
   }
   // graticule horizontals (latitude)
   const la0=Math.ceil(v.latMin/v.step)*v.step;
   for(let la=la0;la<=v.latMax;la+=v.step){
     const y=Y(la).toFixed(1);
-    g+=`<line x1="${pad.l}" y1="${y}" x2="${pad.l+plotW}" y2="${y}" stroke="var(--grid)" stroke-width="1"/>`;
-    g+=`<text x="${(pad.l-6).toFixed(1)}" y="${(+y+3).toFixed(1)}" fill="var(--muted)" font-size="10" font-family="DM Mono" text-anchor="end">${latLabel(la)}</text>`;
+    g+=`<line x1="${pad.l}" y1="${y}" x2="${pad.l+plotW}" y2="${y}" stroke="rgba(59,130,246,.16)" stroke-width="1"/>`;
+    g+=`<text x="${(pad.l-6).toFixed(1)}" y="${(+y+3).toFixed(1)}" fill="#6B7280" font-size="10" font-family="DM Mono" text-anchor="end">${latLabel(la)}</text>`;
   }
   // frame
-  g+=`<rect x="${pad.l}" y="${pad.t}" width="${plotW}" height="${plotH.toFixed(1)}" fill="none" stroke="var(--gridmaj)" stroke-width="1.2"/>`;
+  g+=`<rect x="${pad.l}" y="${pad.t}" width="${plotW}" height="${plotH.toFixed(1)}" fill="none" stroke="rgba(59,130,246,.30)" stroke-width="1.2"/>`;
 
   // buoys
   const list=BUOYS.filter(b=>v.rg==='all'||b.rg===v.rg);
@@ -179,20 +206,42 @@ function render(key){
   attachInteractions(v,W,H,pad,plotW,plotH);
 }
 
+const COMPASS=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const compass=d=>d==null?'':COMPASS[Math.round(d/22.5)%16];
+function buoyInfoHTML(b){
+  const w=WAVES[b.id], rows=[];
+  if(w&&w.h!=null){
+    rows.push(`<div class="rw"><span class="k">Sig. wave Hs</span><span class="val big" style="color:${waveColor(w.h)}">${w.h.toFixed(1)} m</span></div>`);
+    if(w.p!=null)  rows.push(`<div class="rw"><span class="k">Wave period</span><span class="val">${w.p.toFixed(0)} s</span></div>`);
+    if(w.dir!=null)rows.push(`<div class="rw"><span class="k">Wave dir</span><span class="val">${w.dir.toFixed(0)}° ${compass(w.dir)}</span></div>`);
+    if(w.s!=null)  rows.push(`<div class="rw"><span class="k">Swell Hs</span><span class="val">${w.s.toFixed(1)} m</span></div>`);
+    if(w.sp!=null) rows.push(`<div class="rw"><span class="k">Swell period</span><span class="val">${w.sp.toFixed(0)} s</span></div>`);
+    if(w.sd!=null) rows.push(`<div class="rw"><span class="k">Swell dir</span><span class="val">${w.sd.toFixed(0)}° ${compass(w.sd)}</span></div>`);
+    if(w.ww!=null) rows.push(`<div class="rw"><span class="k">Wind-wave Hs</span><span class="val">${w.ww.toFixed(1)} m</span></div>`);
+  } else {
+    rows.push(`<div class="rw"><span class="k" style="color:#6B7280">No live wave data — needs an https connection</span><span class="val"></span></div>`);
+  }
+  return `<span class="bx" onclick="document.getElementById('binfo').style.display='none'">✕</span>`+
+    `<div class="nm">${b.ap?'◇':'○'} ${b.id}</div>`+
+    `<div class="co">${b.nm} · ${b.la.toFixed(3)}, ${b.lo.toFixed(3)}${b.ap?' · approx (NOWPHAS/JMA)':''}</div>`+
+    rows.join('')+
+    `<div class="src">Open-Meteo Marine model · sampled at station coordinates · ${w?('updated '+new Date().toLocaleTimeString([],{hour12:false})):'awaiting data'}</div>`;
+}
+
 function attachInteractions(v,W,H,pad,plotW,plotH){
-  const svg=document.getElementById('svg'), tip=document.getElementById('tip'), readout=document.getElementById('readout');
-  // hover details
+  const svg=document.getElementById('svg'), tip=document.getElementById('tip'), readout=document.getElementById('readout'), binfo=document.getElementById('binfo');
+  // hover = quick peek · click = pinned live detail
   svg.querySelectorAll('.bpt').forEach(el=>{
     const b=BUOYS.find(x=>x.id===el.dataset.id); if(!b)return;
     el.addEventListener('mousemove',e=>{
       const w=WAVES[b.id];
       tip.style.display='block'; tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY+14)+'px';
       tip.innerHTML=`<b>${b.ap?'◇ ':'○ '}${b.id}</b><br>${b.nm}<br>`+
-        `${b.la.toFixed(3)}, ${b.lo.toFixed(3)}<br>`+
         (w&&w.h!=null?`<span style="color:${waveColor(w.h)}">Hs ${w.h.toFixed(1)} m</span> · T ${w.p!=null?w.p.toFixed(0)+'s':'—'} · swell ${w.s!=null?w.s.toFixed(1)+'m':'—'}`:'<span style="color:#6B7280">no live wave data</span>')+
-        (b.ap?'<br><span style="color:#6B7280">NOWPHAS/JMA · approx</span>':`<br><a href="https://www.ndbc.noaa.gov/station_page.php?station=${b.id}" target="_blank">NDBC →</a>`);
+        `<br><span style="color:#6B7280">click for live detail</span>`;
     });
     el.addEventListener('mouseleave',()=>tip.style.display='none');
+    el.addEventListener('click',e=>{ e.stopPropagation(); binfo.innerHTML=buoyInfoHTML(b); binfo.style.display='block'; tip.style.display='none'; });
   });
   // cursor lat/lon readout
   svg.addEventListener('mousemove',e=>{
@@ -213,9 +262,9 @@ async function fetchWaves(){
     const list=BUOYS.filter(b=>b.rg===rg); if(!list.length)return;
     try{
       const lats=list.map(b=>b.la).join(','), lons=list.map(b=>b.lo).join(',');
-      const d=await getJSON(`https://marine-api.open-meteo.com/v1/marine?latitude=${lats}&longitude=${lons}&current=wave_height,wave_period,swell_wave_height&timezone=auto`);
+      const d=await getJSON(`https://marine-api.open-meteo.com/v1/marine?latitude=${lats}&longitude=${lons}&current=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,wind_wave_height&timezone=auto`);
       const arr=Array.isArray(d)?d:[d];
-      list.forEach((b,i)=>{const c=arr[i]&&arr[i].current; if(c){WAVES[b.id]={h:c.wave_height,p:c.wave_period,s:c.swell_wave_height};ok++;}});
+      list.forEach((b,i)=>{const c=arr[i]&&arr[i].current; if(c){WAVES[b.id]={h:c.wave_height,p:c.wave_period,dir:c.wave_direction,s:c.swell_wave_height,sp:c.swell_wave_period,sd:c.swell_wave_direction,ww:c.wind_wave_height};ok++;}});
     }catch(e){ fail+=list.length; }
   }));
   render(CUR);

@@ -24,6 +24,10 @@
   button.rf{font-family:var(--mono);font-size:11px;letter-spacing:.06em;background:transparent;color:var(--text);
     border:1px solid var(--border);padding:8px 13px;cursor:pointer;text-transform:uppercase;}
   button.rf:hover{border-color:var(--orange);color:var(--orange);}
+  .nav{display:flex;gap:4px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;}
+  .nav a{color:var(--muted);text-decoration:none;padding:6px 11px;border:1px solid var(--border);letter-spacing:.04em;transition:.15s;}
+  .nav a:hover{color:#fff;border-color:var(--muted);}
+  .nav a.on{color:var(--bg);background:var(--orange);border-color:var(--orange);font-weight:600;}
   #wrap{flex:1;position:relative;}
   #map{position:absolute;inset:0;background:#0A0E17;}
   .nolf{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:30px;text-align:center;
@@ -35,6 +39,18 @@
   .frame b{color:var(--orange);font-weight:600}
   .frame .m{font-family:var(--mono);font-size:10px;color:var(--muted);display:block;margin-top:6px;}
   .frame .x{float:right;cursor:pointer;color:var(--dim);font-family:var(--mono);margin-left:8px;}
+
+  /* Jアラート-class tsunami banner */
+  .jalert{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:650;
+    font-family:var(--mono);font-size:11.5px;padding:7px 15px;border:1px solid var(--border);
+    background:rgba(11,15,25,.93);color:var(--muted);max-width:min(640px,70%);text-align:center;line-height:1.5;}
+  .jalert b{color:var(--orange);font-weight:600;}
+  .jalert.watch{border-color:var(--amber);color:#fff;background:rgba(40,28,4,.96);}
+  .jalert.watch b{color:var(--amber);}
+  .jalert.active{border-color:var(--red);color:#fff;background:rgba(42,8,8,.96);animation:jpulse 1.4s ease-in-out infinite;}
+  .jalert.active b{color:#fff;}
+  @keyframes jpulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}50%{box-shadow:0 0 0 8px rgba(239,68,68,0)}}
+  @media(max-width:620px){.jalert{max-width:88%;font-size:10.5px;top:8px;}}
 
   /* legend */
   .legend{position:absolute;bottom:14px;left:12px;z-index:600;background:rgba(11,15,25,.92);border:1px solid var(--border);
@@ -64,11 +80,18 @@
 <header>
   <div class="mark"></div>
   <div><h1>Pacific Ring of Fire · Hazard Map<span class="s">Volcanoes · Live Seismicity · Buoys · Aircraft — geophysical track, parallel to weather</span></h1></div>
+  <nav class="nav">
+    <a href="index.html">⌂ Home</a>
+    <a href="ring-of-fire-map.html" class="on">🌋 Map</a>
+    <a href="pacific-hazard.html">🛰 Dashboard</a>
+    <a href="coastal-chart-plot.html">🛟 Buoy Chart</a>
+  </nav>
   <span id="status">initializing…</span>
   <button class="rf" id="refreshBtn">Refresh</button>
 </header>
 <div id="wrap">
   <div id="map"></div>
+  <div class="jalert" id="jalert">🌊 <b>Jアラート級 津波</b> — 取得中… <span style="color:var(--dim)">(JMA防災 / P2P)</span></div>
   <div class="frame" id="frame">
     <span class="x" onclick="document.getElementById('frame').style.display='none'">✕</span>
     <b>Geophysical, not weather.</b> Volcanoes &amp; earthquakes don't forecast storms — but a large undersea quake <b>is</b> a real tsunami precursor. This is the Earth · Fire hazard layer.
@@ -365,6 +388,32 @@ if(typeof L==='undefined'){
       return n;
     }catch(e){ return 0; }
   }
+
+  // Jアラート-class tsunami warnings — JMA 防災 (津波予報) via P2P地震情報, code 552.
+  // (Civil-protection / missile alerts have no public API and are intentionally not shown.)
+  function loadTsunami(){
+    const el=document.getElementById('jalert');
+    const labJ={MajorWarning:'大津波警報',Warning:'津波警報',Watch:'津波注意報',Unknown:'津波予報'};
+    const labE={MajorWarning:'MAJOR tsunami warning',Warning:'tsunami warning',Watch:'tsunami advisory',Unknown:'tsunami notice'};
+    const order=['MajorWarning','Warning','Watch','Unknown'];
+    return getJSON('https://api.p2pquake.net/v2/history?codes=552&limit=10').then(d=>{
+      const rec=Array.isArray(d)&&d.length?d[0]:null;
+      if(!rec||rec.cancelled||!Array.isArray(rec.areas)||!rec.areas.length){
+        el.className='jalert';
+        el.innerHTML='🌊 <b>Jアラート級 津波</b>: 現在発表なし · no active tsunami warning <span style="color:var(--dim)">(JMA防災/P2P)</span>';
+        return;
+      }
+      const byG={}; rec.areas.forEach(a=>{ (byG[a.grade]=byG[a.grade]||[]).push(a.name); });
+      const top=order.find(g=>byG[g]&&byG[g].length)||'Unknown';
+      el.className='jalert '+(top==='Watch'?'watch':'active');
+      const parts=order.filter(g=>byG[g]&&byG[g].length).map(g=>
+        `<b>${labJ[g]}</b> ${labE[g]}: ${byG[g].slice(0,8).join('・')}${byG[g].length>8?' 他':''}`);
+      el.innerHTML='🚨 '+parts.join(' ／ ')+` <span style="color:var(--dim)">· ${rec.issue&&rec.issue.time?rec.issue.time:''} JMA防災/P2P</span>`;
+    }).catch(()=>{
+      el.className='jalert';
+      el.innerHTML='🌊 <b>Jアラート級 津波</b>: feed unavailable — host over https <span style="color:var(--dim)">(JMA防災/P2P)</span>';
+    });
+  }
   async function loadPlanes(){
     const c=map.getCenter();
     const realLon = c.lng < -180 ? c.lng+360 : (c.lng>180 ? c.lng-360 : c.lng);
@@ -408,6 +457,7 @@ if(typeof L==='undefined'){
     drawVolcanoes(elevated);
     let qn=0; try{ qn=await loadQuakes(); }catch(e){}
     let jn=0; try{ jn=await loadJapanQuakes(); }catch(e){}
+    loadTsunami();
     loadHisayama();
     if(map.hasLayer(planeLayer)) loadPlanes();
     setStatus(`${VOLC.length} volcanoes · ${qn} USGS quakes · ${jn} JMA quakes · ${new Date().toLocaleTimeString([],{hour12:false})}`);

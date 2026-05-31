@@ -99,6 +99,11 @@
     padding:15px 17px;border-bottom:1px solid var(--border);}
   .chead .loc{font-weight:700;font-size:19px;letter-spacing:.01em;text-transform:uppercase;line-height:1;}
   .chead .locsub{font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.1em;margin-top:6px;}
+  .chead .clock{font-family:var(--mono);font-size:11px;color:var(--blue);letter-spacing:.05em;margin-top:6px;}
+  .nav{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px;font-family:var(--mono);font-size:11px;}
+  .nav a{color:var(--muted);text-decoration:none;padding:5px 11px;border:1px solid var(--border);letter-spacing:.04em;transition:.15s;}
+  .nav a:hover{color:var(--text);border-color:var(--muted);}
+  .nav a.on{color:var(--bg);background:var(--orange);border-color:var(--orange);font-weight:600;}
   .badge{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.08em;
     padding:7px 11px;border:1px solid;text-transform:uppercase;white-space:nowrap;display:flex;align-items:center;gap:7px;}
   .badge .dot{width:8px;height:8px;border-radius:50%;}
@@ -182,6 +187,12 @@
 </head>
 <body>
 <div class="wrap">
+  <nav class="nav">
+    <a href="index.html">⌂ Home</a>
+    <a href="ring-of-fire-map.html">🌋 Ring of Fire Map</a>
+    <a href="pacific-hazard.html" class="on">🛰 Dashboard</a>
+    <a href="coastal-chart-plot.html">🛟 Buoy Chart</a>
+  </nav>
   <header>
     <div class="hrow">
       <div class="brand">
@@ -226,18 +237,24 @@ const RADIUS_KM = 1200;            // seismicity catchment per location
 const SURF_FLOOD_M = 3.0;          // surf threshold that makes a high tide a flooding concern
 
 const LOCATIONS = [
-  { id:'hi', name:'Hawaii', sub:'Oʻahu · Honolulu', lat:21.30, lon:-157.86,
+  { id:'hi', name:'Hawaii', sub:'Oʻahu · Honolulu', lat:21.30, lon:-157.86, tz:'Pacific/Honolulu',
     mLat:21.25, mLon:-158.15, tide:'1612340', tideName:'Honolulu',
     volc:[{n:'Kīlauea',u:'https://www.usgs.gov/volcanoes/kilauea/volcano-updates'},
           {n:'Mauna Loa',u:'https://www.usgs.gov/volcanoes/mauna-loa/volcano-updates'}] },
-  { id:'sc', name:'S. California', sub:'San Diego', lat:32.72, lon:-117.17,
+  { id:'sf', name:'San Francisco', sub:'Bay Area · Golden Gate', lat:37.77, lon:-122.42, tz:'America/Los_Angeles', fog:true,
+    mLat:37.76, mLon:-122.70, tide:'9414290', tideName:'San Francisco',
+    volc:[] },
+  { id:'la', name:'Los Angeles', sub:'Santa Monica Bay', lat:34.05, lon:-118.24, tz:'America/Los_Angeles', fog:true,
+    mLat:33.85, mLon:-118.45, tide:'9410660', tideName:'Los Angeles',
+    volc:[] },
+  { id:'sc', name:'San Diego', sub:'S. California', lat:32.72, lon:-117.17, tz:'America/Los_Angeles', fog:true,
     mLat:32.60, mLon:-117.40, tide:'9410170', tideName:'San Diego',
     volc:[] },
-  { id:'ky', name:'Kyushu', sub:'Fukuoka · 福岡', lat:33.59, lon:130.40,
+  { id:'ky', name:'Kyushu', sub:'Fukuoka · 福岡', lat:33.59, lon:130.40, tz:'Asia/Tokyo',
     mLat:33.75, mLon:130.25, tide:null, tideName:null,
     volc:[{n:'Sakurajima 桜島',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_8.html'},
           {n:'Aso 阿蘇山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_8.html'}] },
-  { id:'ho', name:'Honshu', sub:'Tokyo Bay · 東京', lat:35.68, lon:139.69,
+  { id:'ho', name:'Honshu', sub:'Tokyo Bay · 東京', lat:35.68, lon:139.69, tz:'Asia/Tokyo',
     mLat:35.10, mLon:140.30, tide:null, tideName:null,
     volc:[{n:'Mt. Fuji 富士山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_4.html'},
           {n:'Asama 浅間山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_3.html'}] },
@@ -272,7 +289,7 @@ async function getJSON(url){
 async function fetchWeather(L){
   const u=`https://api.open-meteo.com/v1/forecast?latitude=${L.lat}&longitude=${L.lon}`
    +`&current=temperature_2m,apparent_temperature,weather_code,pressure_msl,wind_speed_10m,wind_gusts_10m,wind_direction_10m,relative_humidity_2m,precipitation`
-   +`&hourly=pressure_msl,wind_gusts_10m,wind_speed_10m,precipitation_probability,weather_code,precipitation`
+   +`&hourly=pressure_msl,wind_gusts_10m,wind_speed_10m,precipitation_probability,weather_code,precipitation,dew_point_2m,cloud_cover_low,visibility`
    +`&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max,weather_code`
    +`&timezone=auto&forecast_days=2&wind_speed_unit=kmh`;
   return getJSON(u);
@@ -306,7 +323,8 @@ async function fetchSigQuakes(){
   return getJSON('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_month.geojson');
 }
 async function fetchKp(){ // NOAA Space Weather Prediction Center — planetary K index (geomagnetic)
-  return getJSON('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json');
+  try{ return await getJSON('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json'); }
+  catch(e){ return await getJSON('https://services.swpc.noaa.gov/json/planetary_k_index_1m.json'); }
 }
 async function fetchElevatedVolcanoes(){ // USGS HANS — US volcanoes above NORMAL (best effort)
   return getJSON('https://volcanoes.usgs.gov/hans-public/api/volcano/getElevatedVolcanoes');
@@ -442,6 +460,27 @@ function renderCard(L, data){
   const cur=W.current, D=W.daily;
   const [em,desc]=wmo(cur.weather_code);
 
+  // fog assessment (marine/advection) — visibility + temp–dewpoint spread + low cloud + wind
+  let fog=null;
+  if(L.fog){
+    const H=W.hourly;
+    let hi=0;
+    if(H&&H.time){ const tn=new Date(cur.time).getTime();
+      hi=H.time.reduce((b,t,i)=>Math.abs(new Date(t)-tn)<Math.abs(new Date(H.time[b])-tn)?i:b,0); }
+    const vis=H?.visibility?.[hi], clow=H?.cloud_cover_low?.[hi], dew=H?.dew_point_2m?.[hi];
+    const spread=(cur.temperature_2m!=null&&dew!=null)?cur.temperature_2m-dew:null;
+    const wind=cur.wind_speed_10m;
+    if(vis!=null){
+      if(vis<1000) fog={lab:'Dense fog now',cls:'crit',det:`visibility ${num(vis,0)} m`};
+      else if(vis<4000) fog={lab:'Fog / mist now',cls:'warn',det:`visibility ${(vis/1000).toFixed(1)} km`};
+      else if(spread!=null&&spread<=2.5&&(clow==null||clow>50)&&(wind==null||wind<22)) fog={lab:'Fog likely forming',cls:'warn',det:`T–dew ${num(spread,1)}°C · low cloud ${num(clow,0)}%`};
+      else fog={lab:'Clear of fog',cls:'ok',det:`visibility ${(vis/1000).toFixed(0)}+ km`};
+    } else if(spread!=null){
+      fog = spread<=2 ? {lab:'Fog likely',cls:'warn',det:`T–dew ${num(spread,1)}°C`} : {lab:'Clear of fog',cls:'ok',det:`T–dew ${num(spread,1)}°C`};
+    }
+  }
+  const fogLink=L.id==='sf'?' · <a href="https://fog.today/" target="_blank" rel="noopener" style="color:var(--blue)">live SF fog satellite ↗</a>':'';
+
   const cMax=R.capeMax;
   const capeLab = cMax==null?['—','var(--muted)'] : cMax>2500?['Extreme','var(--red)'] : cMax>1000?['Strong','var(--amber)'] : cMax>300?['Moderate','#C7CEDB'] : ['Minimal','var(--green)'];
   const stab = cMax==null?['—','var(--muted)']
@@ -556,6 +595,7 @@ function renderCard(L, data){
         sfc→850 hPa shear ${R.shear!=null?num(R.shear,0)+' km/h':'—'} · winds aloft ${R.ws850!=null?num(R.ws850,0)+' km/h '+dir(R.wd850):'—'}
       </div>
       ${R.marineLayer?`<div class="flood warn" style="margin-top:11px">🌫️ Marine-layer inversion ≈ ${num(R.blh,0)} m — fog &amp; low ceilings likely (coastal &ldquo;gloom&rdquo;)</div>`:''}
+      ${fog?`<div class="flood ${fog.cls}" style="margin-top:11px">🌫️ Fog: <b>${fog.lab}</b> — ${fog.det}${fogLink}</div>`:''}
     </div>
 
     <div class="sect">
@@ -576,11 +616,24 @@ function scaffold(){
   document.getElementById('grid').innerHTML=LOCATIONS.map(L=>`
     <div class="card" id="card-${L.id}">
       <div class="chead">
-        <div><div class="loc">${L.name}</div><div class="locsub">${L.sub} · ${num(L.lat,2)}, ${num(L.lon,2)}</div></div>
+        <div><div class="loc">${L.name}</div><div class="locsub">${L.sub} · ${num(L.lat,2)}, ${num(L.lon,2)}</div><div class="clock" id="clock-${L.id}"></div></div>
         <div class="badge b-NA"><span class="dot"></span>loading</div>
       </div>
       <div class="cbody"><div class="loading">ACQUIRING TELEMETRY<div class="bar"><i></i></div></div></div>
     </div>`).join('');
+  tickClocks();
+  if(!window._clk) window._clk=setInterval(tickClocks,1000);
+}
+function tickClocks(){
+  const now=new Date();
+  LOCATIONS.forEach(L=>{
+    const el=document.getElementById('clock-'+L.id); if(!el||!L.tz) return;
+    try{
+      const t=new Intl.DateTimeFormat('en-GB',{timeZone:L.tz,hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(now);
+      const wd=new Intl.DateTimeFormat('en-US',{timeZone:L.tz,weekday:'short'}).format(now);
+      el.textContent=`🕐 ${t} ${wd} · local`;
+    }catch(e){}
+  });
 }
 
 function timeAgo(ms){const s=(Date.now()-ms)/1000;if(s<3600)return Math.round(s/60)+'m';if(s<86400)return Math.round(s/3600)+'h';return Math.round(s/86400)+'d';}
@@ -592,13 +645,17 @@ function renderGlobal(Q,SIG,KP){
   let kpHTML='<div class="err">geomagnetic feed unavailable</div>';
   try{
     let k=null;
-    if(Array.isArray(KP)&&KP.length>1){ const last=KP[KP.length-1]; k=parseFloat(last[1]); }
+    if(Array.isArray(KP)&&KP.length){
+      const last=KP[KP.length-1];
+      if(last&&typeof last==='object'&&!Array.isArray(last)) k=parseFloat(last.Kp??last.kp_index??last.estimated_kp);
+      else if(Array.isArray(last)) k=parseFloat(last[1]);
+    }
     if(k!=null&&!isNaN(k)){
       const segs=Array.from({length:9},(_,i)=>`<i style="background:${i<Math.round(k)?kpColor(k):'var(--border)'}"></i>`).join('');
       kpHTML=`<div class="kp">
-        <div class="kpval" style="color:${kpColor(k)}">${num(k,0)}</div>
+        <div class="kpval" style="color:${kpColor(k)}">${num(k,1)}</div>
         <div class="kpscale"><div class="kpbar">${segs}</div>
-          <div class="kpmeta" style="color:${kpColor(k)};margin-top:9px">Kp ${num(k,0)} — ${kpLabel(k)}</div>
+          <div class="kpmeta" style="color:${kpColor(k)};margin-top:9px">Kp ${num(k,1)} — ${kpLabel(k)}</div>
           <div class="kpmeta">Planetary K-index · global · <span style="color:var(--dim)">space weather; not a tropospheric weather driver</span></div>
         </div></div>`;
     }
@@ -690,7 +747,9 @@ async function load(){
   diag.global['USGS volcanoes (alert)']=reason(g[3]);
   renderGlobal(Q,SIG,KP);
 
-  await Promise.all(LOCATIONS.map(async L=>{
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  await Promise.all(LOCATIONS.map(async (L,i)=>{
+    await sleep(i*180);   // stagger to avoid Open-Meteo burst rate-limit (429) across six cities
     const res=await Promise.allSettled([fetchWeather(L),fetchMarine(L),fetchTide(L),fetchColumn(L)]);
     const W=res[0].status==='fulfilled'?res[0].value:null;
     const M=res[1].status==='fulfilled'?res[1].value:null;
