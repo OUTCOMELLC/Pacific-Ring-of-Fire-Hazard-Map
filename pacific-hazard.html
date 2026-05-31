@@ -264,12 +264,12 @@ const RADIUS_KM = 1200;            // seismicity catchment per location
 const SURF_FLOOD_M = 3.0;          // surf threshold that makes a high tide a flooding concern
 
 const LOCATIONS = [
-  { id:'hi', name:'Hawaii', sub:'Oʻahu · Honolulu', lat:21.30, lon:-157.86, tz:'Pacific/Honolulu',
-    mLat:21.25, mLon:-158.15, tide:'1612340', tideName:'Honolulu',
-    volc:[{n:'Kīlauea',u:'https://www.usgs.gov/volcanoes/kilauea/volcano-updates'},
-          {n:'Mauna Loa',u:'https://www.usgs.gov/volcanoes/mauna-loa/volcano-updates'}] },
-  { id:'sf', name:'San Francisco', sub:'Bay Area · Golden Gate', lat:37.77, lon:-122.42, tz:'America/Los_Angeles', fog:true,
-    mLat:37.76, mLon:-122.70, tide:'9414290', tideName:'San Francisco',
+  { id:'ho', name:'Honshu', sub:'Tokyo · 東京', lat:35.68, lon:139.69, tz:'Asia/Tokyo',
+    mLat:35.10, mLon:140.30, tide:null, tideName:null,
+    volc:[{n:'Mt. Fuji 富士山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_4.html'},
+          {n:'Asama 浅間山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_3.html'}] },
+  { id:'hk', name:'Hakata Port', sub:'Fukuoka · 博多港', lat:33.61, lon:130.40, tz:'Asia/Tokyo', fog:true,
+    mLat:33.70, mLon:130.30, tide:null, tideName:null,
     volc:[] },
   { id:'la', name:'Los Angeles', sub:'Santa Monica Bay', lat:34.05, lon:-118.24, tz:'America/Los_Angeles', fog:true,
     mLat:33.85, mLon:-118.45, tide:'9410660', tideName:'Los Angeles',
@@ -277,6 +277,13 @@ const LOCATIONS = [
   { id:'sc', name:'San Diego', sub:'S. California', lat:32.72, lon:-117.17, tz:'America/Los_Angeles', fog:true,
     mLat:32.60, mLon:-117.40, tide:'9410170', tideName:'San Diego',
     volc:[] },
+  { id:'sf', name:'San Francisco', sub:'Bay Area · Golden Gate', lat:37.77, lon:-122.42, tz:'America/Los_Angeles', fog:true,
+    mLat:37.76, mLon:-122.70, tide:'9414290', tideName:'San Francisco',
+    volc:[] },
+  { id:'hi', name:'Hawaii', sub:'Oʻahu · Honolulu', lat:21.30, lon:-157.86, tz:'Pacific/Honolulu',
+    mLat:21.25, mLon:-158.15, tide:'1612340', tideName:'Honolulu',
+    volc:[{n:'Kīlauea',u:'https://www.usgs.gov/volcanoes/kilauea/volcano-updates'},
+          {n:'Mauna Loa',u:'https://www.usgs.gov/volcanoes/mauna-loa/volcano-updates'}] },
   { id:'ng', name:'Nagasaki', sub:'長崎 · East China Sea', lat:32.75, lon:129.87, tz:'Asia/Tokyo', fog:true,
     mLat:32.70, mLon:129.70, tide:null, tideName:null,
     volc:[{n:'Unzen 雲仙岳',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_8.html'}] },
@@ -284,13 +291,6 @@ const LOCATIONS = [
     mLat:31.90, mLon:131.58, tide:null, tideName:null,
     volc:[{n:'Kirishima 霧島',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_8.html'},
           {n:'Sakurajima 桜島',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_8.html'}] },
-  { id:'hk', name:'Hakata Port', sub:'Fukuoka · 博多港', lat:33.61, lon:130.40, tz:'Asia/Tokyo', fog:true,
-    mLat:33.70, mLon:130.30, tide:null, tideName:null,
-    volc:[] },
-  { id:'ho', name:'Honshu', sub:'Tokyo · 東京', lat:35.68, lon:139.69, tz:'Asia/Tokyo',
-    mLat:35.10, mLon:140.30, tide:null, tideName:null,
-    volc:[{n:'Mt. Fuji 富士山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_4.html'},
-          {n:'Asama 浅間山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_3.html'}] },
   { id:'tb', name:'Tokyo Bay', sub:'Haneda HND · 大田区 Ōta', lat:35.549, lon:139.779, tz:'Asia/Tokyo', fog:true,
     mLat:35.45, mLon:139.88, tide:null, tideName:null,
     volc:[] },
@@ -368,6 +368,16 @@ async function fetchKp(){ // NOAA Space Weather Prediction Center — planetary 
 async function fetchElevatedVolcanoes(){ // USGS HANS — US volcanoes above NORMAL (best effort)
   return getJSON('https://volcanoes.usgs.gov/hans-public/api/volcano/getElevatedVolcanoes');
 }
+let AMEDAS_TABLE=null; // station metadata cached across refreshes
+async function fetchAmedas(){ // JMA AMeDAS — real measured surface obs (Japan), nearest-station per city
+  const r=await fetch('https://www.jma.go.jp/bosai/amedas/data/latest_time.txt');
+  if(!r.ok) throw new Error('amedas time '+r.status);
+  const t=(await r.text()).trim();
+  const ts=t.slice(0,16).replace(/[-:T]/g,'')+'00';   // YYYYMMDDHHMM00
+  const obs=await getJSON('https://www.jma.go.jp/bosai/amedas/data/map/'+ts+'.json');
+  if(!AMEDAS_TABLE){ try{ AMEDAS_TABLE=await getJSON('https://www.jma.go.jp/bosai/amedas/const/amedastable.json'); }catch(e){} }
+  return {obs, table:AMEDAS_TABLE, time:t};
+}
 
 // Pacific "Ring of Fire" bounding test (rough horseshoe around the Pacific basin)
 function inRingOfFire(lat,lon){
@@ -397,6 +407,35 @@ function solunar(age){
   const majors=[up,low].sort((a,b)=>a-b);          // major feeding periods
   const minors=[(up+6.21)%24,(up-6.21+24)%24].sort((a,b)=>a-b); // ~moonrise / moonset
   return {majors,minors};
+}
+// AMeDAS measured-obs helpers
+const AMDIR=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+function amVal(o,k){ const v=o&&o[k]; return (Array.isArray(v)&&v[0]!=null)?v[0]:null; }
+function nearestAmedas(lat,lon,A){
+  if(!A||!A.obs||!A.table) return null;
+  let best=null,bd=1e9;
+  for(const code in A.table){
+    const s=A.table[code]; if(!s||!s.lat||!s.lon) continue;
+    const o=A.obs[code]; if(!o) continue;
+    if(amVal(o,'temp')==null && amVal(o,'wind')==null && amVal(o,'precipitation1h')==null) continue;
+    const sla=s.lat[0]+s.lat[1]/60, slo=s.lon[0]+s.lon[1]/60;
+    const d=haversine(lat,lon,sla,slo);
+    if(d<bd){ bd=d; best={code,s,o,km:d}; }
+  }
+  return best;
+}
+function amedasLine(L,A){
+  const n=nearestAmedas(L.lat,L.lon,A); if(!n) return '';
+  const o=n.o, nm=(n.s.enName||n.s.kjName||n.code);
+  const temp=amVal(o,'temp'), wind=amVal(o,'wind'), wd=amVal(o,'windDirection'), pr=amVal(o,'precipitation1h'), hum=amVal(o,'humidity');
+  const dir = wd==null?'' : (wd===0?'calm':AMDIR[wd%16]);
+  const parts=[];
+  if(temp!=null) parts.push(`${num(temp,1)}°C`);
+  if(wind!=null) parts.push(`wind ${num(wind,1)} m/s${dir&&dir!=='calm'?' '+dir:''}`);
+  if(pr!=null) parts.push(`rain ${num(pr,1)} mm/h`);
+  if(hum!=null) parts.push(`${num(hum,0)}% RH`);
+  if(!parts.length) return '';
+  return `<div class="verify" style="border-left:2px solid var(--teal);padding-left:8px;color:var(--teal)">📡 Measured now (AMeDAS · ${nm}, ${Math.round(n.km)} km): ${parts.join(' · ')}</div>`;
 }
 
 // ---- scoring (transparent) ----
@@ -534,6 +573,7 @@ function renderCard(L, data){
   const verifyLink = L.tz==='Asia/Tokyo'
     ? `<a href="https://www.jma.go.jp/bosai/warning/#area_type=offices&amp;area_code=${JMA_OFFICE[L.id]||'010000'}" target="_blank" rel="noopener">JMA 気象警報・注意報 ↗</a>`
     : `<a href="https://forecast.weather.gov/MapClick.php?lat=${L.lat}&amp;lon=${L.lon}" target="_blank" rel="noopener">NWS forecast &amp; alerts ↗</a>`;
+  const amedasHTML = (L.tz==='Asia/Tokyo' && data.A) ? amedasLine(L,data.A) : '';
 
   const cMax=R.capeMax;
   const capeLab = cMax==null?['—','var(--muted)'] : cMax>2500?['Extreme','var(--red)'] : cMax>1000?['Strong','var(--amber)'] : cMax>300?['Moderate','#C7CEDB'] : ['Minimal','var(--green)'];
@@ -638,6 +678,7 @@ function renderCard(L, data){
       </div>
       <div class="chips">${chips}</div>
       <div class="verify">⚠ This badge is a heads-up — verify official watches/warnings: ${verifyLink}</div>
+      ${amedasHTML}
     </div>
 
     <div class="sect">
@@ -806,9 +847,8 @@ function renderDiag(diag){
 }
 
 async function load(){
-  const BUILD='build 2026-05-31-d';
   const btn=document.getElementById('refreshBtn');btn.classList.add('busy');
-  const setStamp=t=>{const s=document.getElementById('stamp'); if(s) s.textContent=BUILD+' · '+t;};
+  const setStamp=t=>{const s=document.getElementById('stamp'); if(s) s.textContent=t;};
   setStamp('booting…');
   scaffold();
   try{
@@ -818,15 +858,17 @@ async function load(){
   const reason=res=>res.status==='fulfilled'?'ok':((res.reason&&res.reason.message)||String(res.reason||'failed'));
 
   setStamp('loading global feeds…');
-  const g=await Promise.allSettled([fetchQuakes(),fetchSigQuakes(),fetchKp(),fetchElevatedVolcanoes()]);
+  const g=await Promise.allSettled([fetchQuakes(),fetchSigQuakes(),fetchKp(),fetchElevatedVolcanoes(),fetchAmedas()]);
   const Q =g[0].status==='fulfilled'?g[0].value:null;
   const SIG=g[1].status==='fulfilled'?g[1].value:null;
   const KP =g[2].status==='fulfilled'?g[2].value:null;
   const EV =g[3].status==='fulfilled'?g[3].value:null;
+  const A  =g[4].status==='fulfilled'?g[4].value:null;
   diag.global['USGS quakes (M4.5+/wk)']=reason(g[0]);
   diag.global['USGS significant (mo)']=reason(g[1]);
   diag.global['NOAA SWPC Kp']=reason(g[2]);
   diag.global['USGS volcanoes (alert)']=reason(g[3]);
+  diag.global['JMA AMeDAS (Japan obs)']=reason(g[4]);
   try{ renderGlobal(Q,SIG,KP); }catch(e){ try{document.getElementById('globalstrip').innerHTML='<div class="err">global strip error: '+(e&&e.message||e)+'</div>';}catch(_){} }
 
   setStamp('loading city feeds…');
@@ -845,7 +887,7 @@ async function load(){
       column:reason(res[3])
     };
     if(!W){ renderCard(L,{error:'Weather feed failed — '+diag.loc[L.id].weather}); return; }
-    try{ renderCard(L,{W,M,C,T,Q,EV}); }
+    try{ renderCard(L,{W,M,C,T,Q,EV,A}); }
     catch(err){
       const card=document.getElementById('card-'+L.id);
       if(card){ const b=card.querySelector('.cbody'); if(b) b.innerHTML='<div class="err">⚠ render error ('+L.name+'): '+(err&&err.message||err)+'</div>'; }
