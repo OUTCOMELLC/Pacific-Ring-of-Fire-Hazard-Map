@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pacific Coastal Hazard Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0F19; --panel:#141B2D; --panel2:#0F1524; --border:#1F2937;
+    --text:#E5E9F0; --muted:#6B7280; --dim:#475569;
+    --orange:#FB8102; --blue:#3B82F6; --teal:#2DD4BF;
+    --green:#22C55E; --amber:#F59E0B; --red:#EF4444;
+    --mono:'DM Mono',ui-monospace,Menlo,monospace;
+    --disp:'Saira',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);color:var(--text);font-family:var(--disp);
+    -webkit-font-smoothing:antialiased;}
+  body{
+    background-image:
+      linear-gradient(rgba(59,130,246,.025) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(59,130,246,.025) 1px,transparent 1px);
+    background-size:42px 42px;
+    min-height:100vh;padding:0 0 60px;
+  }
+  .wrap{max-width:1320px;margin:0 auto;padding:0 18px;}
+
+  /* HEADER */
+  header{border-bottom:1px solid var(--border);padding:22px 0 18px;margin-bottom:20px;
+    position:sticky;top:0;background:rgba(11,15,25,.92);backdrop-filter:blur(8px);z-index:50;}
+  .hrow{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:center;gap:13px;}
+  .mark{width:13px;height:34px;background:var(--orange);box-shadow:18px 0 0 var(--blue);
+    margin-right:18px;flex:none;}
+  h1{font-weight:800;font-size:25px;letter-spacing:.02em;line-height:1;text-transform:uppercase;}
+  h1 .sub{display:block;font-family:var(--mono);font-size:10.5px;font-weight:400;
+    letter-spacing:.22em;color:var(--muted);margin-top:7px;text-transform:uppercase;}
+  .hctl{display:flex;align-items:center;gap:14px;font-family:var(--mono);font-size:11px;color:var(--muted);}
+  #stamp{color:var(--dim);}
+  button.refresh{font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+    background:transparent;color:var(--text);border:1px solid var(--border);
+    padding:9px 15px;cursor:pointer;text-transform:uppercase;transition:.15s;display:flex;gap:8px;align-items:center;}
+  button.refresh:hover{border-color:var(--orange);color:var(--orange);}
+  button.refresh .d{width:7px;height:7px;border-radius:50%;background:var(--green);}
+  button.refresh.busy .d{background:var(--amber);animation:pulse 1s infinite;}
+  @keyframes pulse{50%{opacity:.25}}
+
+  /* DISCLAIMER */
+  .note{border:1px solid var(--border);border-left:3px solid var(--orange);
+    background:var(--panel2);padding:13px 16px;margin-bottom:22px;font-size:13px;color:#B8C0CE;line-height:1.55;}
+  .note b{color:var(--orange);font-weight:600;}
+  .note .m{font-family:var(--mono);font-size:11px;color:var(--muted);}
+
+  /* GLOBAL STRIP */
+  .gstrip{display:grid;grid-template-columns:1fr 1.35fr;gap:16px;margin-bottom:22px;}
+  @media(max-width:840px){.gstrip{grid-template-columns:1fr}}
+  .gbox{border:1px solid var(--border);background:var(--panel);padding:14px 16px;animation:rise .5s both;}
+  .gbox h4{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;
+    margin-bottom:13px;display:flex;align-items:center;gap:8px;}
+  .gbox h4 .tag{margin-left:auto;font-size:9px;color:var(--dim);border:1px solid var(--border);padding:2px 6px;letter-spacing:.12em;}
+  .kp{display:flex;align-items:center;gap:18px;}
+  .kpval{font-family:var(--mono);font-size:40px;font-weight:500;line-height:.9;}
+  .kpscale{flex:1;}
+  .kpbar{display:flex;gap:3px;height:11px;}
+  .kpbar i{flex:1;}
+  .kpmeta{font-family:var(--mono);font-size:10.5px;color:var(--muted);line-height:1.5;}
+  .rof{font-family:var(--mono);font-size:11.5px;}
+  .rof .q{display:flex;gap:11px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--border);}
+  .rof .q:last-child{border:none;}
+  .rof .mag{color:var(--orange);font-weight:500;min-width:44px;}
+  .rof .pl{color:#C7CEDB;flex:1;}
+  .rof .tm{color:var(--dim);font-size:10px;white-space:nowrap;}
+
+  /* DIAGNOSTICS */
+  .diagbox{border:1px solid var(--border);background:var(--panel2);margin-bottom:22px;font-family:var(--mono);}
+  .diagbox summary{cursor:pointer;padding:11px 16px;font-size:12px;list-style:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .diagbox summary::-webkit-details-marker{display:none;}
+  .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;padding:2px 16px 16px;border-top:1px solid var(--border);}
+  @media(max-width:840px){.dgrid{grid-template-columns:1fr}}
+  .dhdr{font-size:9.5px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;margin:11px 0 9px;}
+  .drow{display:flex;align-items:center;gap:10px;padding:4px 0;font-size:11px;}
+  .ddot{width:8px;height:8px;border-radius:50%;flex:none;}
+  .dname{color:#C7CEDB;}
+  .dstat{color:var(--muted);font-size:10px;margin-left:auto;text-align:right;word-break:break-word;max-width:55%;}
+
+  /* GRID */
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+  @media(max-width:840px){.grid{grid-template-columns:1fr}}
+
+  .card{border:1px solid var(--border);background:var(--panel);position:relative;
+    display:flex;flex-direction:column;animation:rise .5s both;}
+  .card:nth-child(2){animation-delay:.06s}.card:nth-child(3){animation-delay:.12s}.card:nth-child(4){animation-delay:.18s}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}}
+
+  .chead{display:flex;justify-content:space-between;align-items:flex-start;
+    padding:15px 17px;border-bottom:1px solid var(--border);}
+  .chead .loc{font-weight:700;font-size:19px;letter-spacing:.01em;text-transform:uppercase;line-height:1;}
+  .chead .locsub{font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.1em;margin-top:6px;}
+  .badge{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.08em;
+    padding:7px 11px;border:1px solid;text-transform:uppercase;white-space:nowrap;display:flex;align-items:center;gap:7px;}
+  .badge .dot{width:8px;height:8px;border-radius:50%;}
+  .b-CALM{color:var(--green);border-color:rgba(34,197,94,.4);background:rgba(34,197,94,.08)}
+  .b-CALM .dot{background:var(--green)}
+  .b-WATCH{color:var(--amber);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.08)}
+  .b-WATCH .dot{background:var(--amber);animation:pulse 1.4s infinite}
+  .b-WARNING{color:var(--red);border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.1)}
+  .b-WARNING .dot{background:var(--red);animation:pulse .9s infinite}
+  .b-NA{color:var(--muted);border-color:var(--border)}.b-NA .dot{background:var(--dim)}
+
+  .cbody{padding:4px 17px 17px;flex:1;}
+  .sect{padding:15px 0;border-bottom:1px solid var(--border);}
+  .sect:last-child{border-bottom:none;}
+  .sect h3{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--muted);
+    text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+  .sect h3 .ic{font-size:13px;}
+  .sect h3 .tag{margin-left:auto;font-size:9px;color:var(--dim);letter-spacing:.12em;border:1px solid var(--border);padding:2px 6px;}
+
+  .readouts{display:grid;grid-template-columns:repeat(3,1fr);gap:13px 10px;}
+  .ro{}
+  .ro .k{font-family:var(--mono);font-size:9.5px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;}
+  .ro .v{font-family:var(--mono);font-size:18px;font-weight:500;line-height:1;}
+  .ro .v small{font-size:11px;color:var(--muted);font-weight:400;}
+  .ro .v .arr{font-size:13px;}
+  .up{color:var(--red)}.down{color:var(--blue)}.flat{color:var(--muted)}
+
+  .wxnow{display:flex;align-items:center;gap:13px;margin-bottom:14px;}
+  .wxnow .em{font-size:34px;line-height:1;}
+  .wxnow .t{font-family:var(--mono);font-size:30px;font-weight:500;line-height:1;}
+  .wxnow .t small{font-size:14px;color:var(--muted)}
+  .wxnow .desc{font-size:13px;color:#C7CEDB;line-height:1.4;}
+  .wxnow .desc .hl{font-family:var(--mono);font-size:11px;color:var(--muted);display:block;margin-top:3px;}
+
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:13px;}
+  .chip{font-family:var(--mono);font-size:10px;letter-spacing:.04em;padding:5px 9px;border:1px solid var(--border);
+    color:#C7CEDB;display:flex;gap:7px;align-items:center;}
+  .chip .pt{color:var(--amber);font-weight:500;}
+  .chip.r .pt{color:var(--red)}
+  .chip.none{color:var(--green);border-color:rgba(34,197,94,.3)}
+
+  .flood{margin-top:13px;padding:9px 12px;border:1px solid;font-family:var(--mono);font-size:11px;
+    letter-spacing:.03em;display:flex;gap:9px;align-items:center;}
+  .flood.warn{color:var(--amber);border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.07)}
+  .flood.crit{color:var(--red);border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.08)}
+  .flood.ok{color:var(--muted);border-color:var(--border)}
+
+  .tide{display:flex;gap:18px;}
+  .tide .t{flex:1;border:1px solid var(--border);padding:11px;}
+  .tide .t .lab{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;display:flex;gap:7px;align-items:center;margin-bottom:8px;}
+  .tide .t.hi .lab{color:var(--teal)} .tide .t.lo .lab{color:var(--blue)}
+  .tide .t .tm{font-family:var(--mono);font-size:17px;font-weight:500;}
+  .tide .t .ht{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:3px;}
+  .tide .t .ar{font-size:11px}
+
+  .geo{font-family:var(--mono);font-size:12px;line-height:1.7;color:#C7CEDB;}
+  .geo .row{display:flex;gap:9px;align-items:baseline;}
+  .geo .lbl{color:var(--muted);font-size:10px;letter-spacing:.05em;min-width:78px;}
+  .geo .big{font-size:15px;color:var(--text)}
+  .geo .tsu{color:var(--red);border:1px solid rgba(239,68,68,.4);padding:2px 7px;font-size:9.5px;letter-spacing:.1em;}
+  .volc{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px;}
+  .volc a{font-family:var(--mono);font-size:10.5px;color:#C7CEDB;text-decoration:none;border:1px solid var(--border);
+    padding:5px 9px;transition:.15s;display:flex;gap:6px;align-items:center;}
+  .volc a:hover{border-color:var(--orange);color:var(--orange)}
+  .volc a .v{color:var(--orange);font-size:11px;line-height:0}
+  .indep{font-size:10.5px;color:var(--dim);margin-top:11px;font-style:italic;line-height:1.5;}
+
+  .loading{padding:40px 0;text-align:center;font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.1em;}
+  .loading .bar{height:2px;width:120px;margin:14px auto 0;background:var(--border);overflow:hidden;}
+  .loading .bar i{display:block;height:100%;width:40%;background:var(--orange);animation:slide 1.1s infinite;}
+  @keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(320%)}}
+  .err{font-family:var(--mono);font-size:11px;color:var(--red);padding:8px 0;}
+
+  footer{margin-top:30px;font-family:var(--mono);font-size:10.5px;color:var(--dim);line-height:1.8;border-top:1px solid var(--border);padding-top:16px;}
+  footer a{color:var(--muted);text-decoration:none;border-bottom:1px dotted var(--dim);}
+  footer a:hover{color:var(--orange);border-color:var(--orange);}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:8px;}
+  .legend span{display:flex;gap:7px;align-items:center;}
+  .legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="hrow">
+      <div class="brand">
+        <div class="mark"></div>
+        <div>
+          <h1>Pacific Coastal Hazard Console
+            <span class="sub">Marine Weather · Tides · Ring-of-Fire Seismicity</span>
+          </h1>
+        </div>
+      </div>
+      <div class="hctl">
+        <span id="stamp">— awaiting data —</span>
+        <button class="refresh" id="refreshBtn"><span class="d"></span>Refresh</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="note">
+    <b>How to read this:</b> The <b>weather risk</b> badge is a forecast, computed transparently from atmospheric &amp; marine signals — falling/low barometric pressure, wind &amp; gusts, rain probability, and significant wave/swell height. <b>Tides</b> are astronomically predictable; they matter here only where they <b>combine</b> with high surf to drive coastal flooding.
+    <span class="m" style="display:block;margin-top:8px;">Earthquakes, volcanoes &amp; geomagnetic (solar) activity do <b style="color:#C7CEDB">not</b> forecast weather — no physical mechanism links them. Think <b style="color:#C7CEDB">Earth · Fire · Magnetism</b>: a <b style="color:#C7CEDB">separate</b> seismic / tsunami / ashfall / space-weather layer for awareness only. <b style="color:#C7CEDB">Wind &amp; Water</b> — atmosphere, ocean &amp; moon — drive the actual forecast.</span>
+  </div>
+
+  <div id="diag"></div>
+
+  <div id="globalstrip"></div>
+
+  <div class="grid" id="grid"></div>
+
+  <footer>
+    Sources — atmospheric &amp; marine forecast: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> (model; substitutes for NDBC buoys, whose raw feeds block browser access) · tide predictions: <a href="https://tidesandcurrents.noaa.gov" target="_blank" rel="noopener">NOAA CO-OPS</a> (US stations) · seismicity: <a href="https://earthquake.usgs.gov" target="_blank" rel="noopener">USGS</a> M4.5+ past 7 days · volcano alert levels: official observatories (linked).
+    <div class="legend">
+      <span><i style="background:var(--green)"></i>Calm</span>
+      <span><i style="background:var(--amber)"></i>Watch</span>
+      <span><i style="background:var(--red)"></i>Warning</span>
+      <span style="color:var(--dim)">Nearest NDBC buoys for reference: HI 51201/51101 · SoCal 46086/46232 · JP via JMA</span>
+    </div>
+  </footer>
+</div>
+
+<script>
+const RADIUS_KM = 1200;            // seismicity catchment per location
+const SURF_FLOOD_M = 3.0;          // surf threshold that makes a high tide a flooding concern
+
+const LOCATIONS = [
+  { id:'hi', name:'Hawaii', sub:'Oʻahu · Honolulu', lat:21.30, lon:-157.86,
+    mLat:21.25, mLon:-158.15, tide:'1612340', tideName:'Honolulu',
+    volc:[{n:'Kīlauea',u:'https://www.usgs.gov/volcanoes/kilauea/volcano-updates'},
+          {n:'Mauna Loa',u:'https://www.usgs.gov/volcanoes/mauna-loa/volcano-updates'}] },
+  { id:'sc', name:'S. California', sub:'San Diego', lat:32.72, lon:-117.17,
+    mLat:32.60, mLon:-117.40, tide:'9410170', tideName:'San Diego',
+    volc:[] },
+  { id:'ky', name:'Kyushu', sub:'Fukuoka · 福岡', lat:33.59, lon:130.40,
+    mLat:33.75, mLon:130.25, tide:null, tideName:null,
+    volc:[{n:'Sakurajima 桜島',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_8.html'},
+          {n:'Aso 阿蘇山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_8.html'}] },
+  { id:'ho', name:'Honshu', sub:'Tokyo Bay · 東京', lat:35.68, lon:139.69,
+    mLat:35.10, mLon:140.30, tide:null, tideName:null,
+    volc:[{n:'Mt. Fuji 富士山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_4.html'},
+          {n:'Asama 浅間山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_3.html'}] },
+];
+
+const WMO = {
+  0:['☀️','Clear'],1:['🌤️','Mainly clear'],2:['⛅','Partly cloudy'],3:['☁️','Overcast'],
+  45:['🌫️','Fog'],48:['🌫️','Rime fog'],51:['🌦️','Light drizzle'],53:['🌦️','Drizzle'],55:['🌧️','Dense drizzle'],
+  56:['🌧️','Freezing drizzle'],57:['🌧️','Freezing drizzle'],61:['🌧️','Light rain'],63:['🌧️','Rain'],65:['🌧️','Heavy rain'],
+  66:['🌧️','Freezing rain'],67:['🌧️','Freezing rain'],71:['🌨️','Light snow'],73:['🌨️','Snow'],75:['🌨️','Heavy snow'],
+  77:['🌨️','Snow grains'],80:['🌦️','Rain showers'],81:['🌧️','Rain showers'],82:['⛈️','Violent showers'],
+  85:['🌨️','Snow showers'],86:['🌨️','Snow showers'],95:['⛈️','Thunderstorm'],96:['⛈️','Storm + hail'],99:['⛈️','Severe storm'],
+};
+const wmo = c => WMO[c] || ['🌐','—'];
+const COMPASS=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const dir = d => (d==null)?'—':COMPASS[Math.round(d/22.5)%16];
+
+function haversine(a,b,c,d){const R=6371,r=Math.PI/180;
+  const dLa=(c-a)*r,dLo=(d-b)*r;const x=Math.sin(dLa/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dLo/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+const num=(x,d=1)=>(x==null||isNaN(x))?'—':Number(x).toFixed(d);
+async function getJSON(url){
+  let r;
+  try{ r=await fetch(url); }
+  catch(e){ throw new Error('network/CORS blocked'); }
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  try{ return await r.json(); }
+  catch(e){ throw new Error('bad response'); }
+}
+
+// ---- fetchers ----
+async function fetchWeather(L){
+  const u=`https://api.open-meteo.com/v1/forecast?latitude=${L.lat}&longitude=${L.lon}`
+   +`&current=temperature_2m,apparent_temperature,weather_code,pressure_msl,wind_speed_10m,wind_gusts_10m,wind_direction_10m,relative_humidity_2m,precipitation`
+   +`&hourly=pressure_msl,wind_gusts_10m,wind_speed_10m,precipitation_probability,weather_code,precipitation`
+   +`&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max,weather_code`
+   +`&timezone=auto&forecast_days=2&wind_speed_unit=kmh`;
+  return getJSON(u);
+}
+// Air-column / vertical profile — isolated best-effort feed so a bad variable can never break core weather
+async function fetchColumn(L){
+  const u=`https://api.open-meteo.com/v1/forecast?latitude=${L.lat}&longitude=${L.lon}`
+   +`&hourly=cape,boundary_layer_height,freezing_level_height,soil_temperature_0cm,temperature_1000hPa,temperature_925hPa,temperature_850hPa,wind_speed_850hPa,wind_direction_850hPa,relative_humidity_850hPa`
+   +`&timezone=auto&forecast_days=2&wind_speed_unit=kmh`;
+  return getJSON(u);
+}
+async function fetchMarine(L){
+  const u=`https://marine-api.open-meteo.com/v1/marine?latitude=${L.mLat}&longitude=${L.mLon}`
+   +`&current=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period`
+   +`&hourly=wave_height&timezone=auto&forecast_days=2`;
+  return getJSON(u);
+}
+async function fetchTide(L){
+  if(!L.tide) return null;
+  const fmt=d=>d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0');
+  const now=new Date(),end=new Date(now.getTime()+2*864e5);
+  const u=`https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?product=predictions&application=hazard-console`
+   +`&begin_date=${fmt(now)}&end_date=${fmt(end)}&datum=MLLW&station=${L.tide}`
+   +`&time_zone=lst_ldt&units=english&interval=hilo&format=json`;
+  return getJSON(u);
+}
+async function fetchQuakes(){
+  return getJSON('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_week.geojson');
+}
+async function fetchSigQuakes(){
+  return getJSON('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_month.geojson');
+}
+async function fetchKp(){ // NOAA Space Weather Prediction Center — planetary K index (geomagnetic)
+  return getJSON('https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json');
+}
+async function fetchElevatedVolcanoes(){ // USGS HANS — US volcanoes above NORMAL (best effort)
+  return getJSON('https://volcanoes.usgs.gov/hans-public/api/volcano/getElevatedVolcanoes');
+}
+
+// Pacific "Ring of Fire" bounding test (rough horseshoe around the Pacific basin)
+function inRingOfFire(lat,lon){
+  if(lat<-60||lat>66) return false;
+  return (lon>=120&&lon<=180) || (lon>=-180&&lon<=-66);
+}
+// Moon phase from date (no API) — drives spring/neap tide cross-reference
+function moonPhase(date){
+  const syn=29.530588853;
+  const ref=Date.UTC(2000,0,6,18,14)/86400000;          // known new moon
+  const now=date.getTime()/86400000;
+  const age=((now-ref)%syn+syn)%syn;
+  const illum=(1-Math.cos(2*Math.PI*age/syn))/2;
+  const t=[[1.85,'New moon','🌑'],[5.5,'Waxing crescent','🌒'],[9.2,'First quarter','🌓'],
+           [12.9,'Waxing gibbous','🌔'],[16.6,'Full moon','🌕'],[20.3,'Waning gibbous','🌖'],
+           [23.9,'Last quarter','🌗'],[27.6,'Waning crescent','🌘'],[30,'New moon','🌑']];
+  const n=t.find(x=>age<x[0]);
+  const isSpring=age<2||age>27.5||Math.abs(age-14.77)<2;       // new / full -> max tidal range
+  const isNeap=Math.abs(age-7.38)<1.8||Math.abs(age-22.15)<1.8;// quarters -> min range
+  return {age,illum,name:n[1],emoji:n[2],isSpring,isNeap};
+}
+
+// ---- scoring (transparent) ----
+function nextHours(times, ref, arr, n=24){
+  if(!arr||!times) return [];
+  const refMs=Date.parse(ref); let i=0;
+  for(let k=0;k<times.length;k++){ if(Date.parse(times[k])<=refMs) i=k; else break; }
+  return arr.slice(i, i+n).filter(v=>v!=null);
+}
+function computeRisk(W, M, C){
+  const cur=W.current, H=W.hourly, D=W.daily;
+  const ct=cur.time;
+  const _refMs=Date.parse(ct); let idx0=0;
+  for(let k=0;k<H.time.length;k++){ if(Date.parse(H.time[k])<=_refMs) idx0=k; else break; }
+  const at = arr => arr?arr[idx0]:null;
+  const pH=nextHours(H.time,ct,H.pressure_msl);
+  const gH=nextHours(H.time,ct,H.wind_gusts_10m);
+  const ppH=nextHours(H.time,ct,H.precipitation_probability);
+  const wcH=nextHours(H.time,ct,H.weather_code);
+  let waveMax=null;
+  if(M&&M.hourly&&M.hourly.wave_height){const wH=nextHours(M.hourly.time,M.current?M.current.time:M.hourly.time[0],M.hourly.wave_height);
+    waveMax=wH.length?Math.max(...wH):null;}
+  if(waveMax==null&&M&&M.current) waveMax=M.current.wave_height;
+
+  const minP=pH.length?Math.min(...pH):cur.pressure_msl;
+  const drop=cur.pressure_msl-minP;
+  const maxGust=gH.length?Math.max(...gH):cur.wind_gusts_10m;
+  const maxPP=Math.max(D.precipitation_probability_max?.[0]??0, ...(ppH.length?ppH:[0]));
+  const rain=D.precipitation_sum?.[0]??0;
+  const storm=wcH.some(c=>[95,96,99].includes(c));
+  const heavy=wcH.some(c=>[82,86,65].includes(c));
+
+  const f=[]; let s=0; const add=(label,pt,detail,crit)=>{f.push({label,pt,detail,crit});s+=pt;};
+  if(minP<1000) add('Deep low',3,`min ${num(minP,0)} hPa`,true);
+  else if(minP<1006) add('Low pressure',2,`min ${num(minP,0)} hPa`);
+  else if(minP<1011) add('Soft low',1,`min ${num(minP,0)} hPa`);
+  if(drop>8) add('Rapid pressure fall',2,`−${num(drop,0)} hPa/24h`,true);
+  else if(drop>4) add('Falling pressure',1,`−${num(drop,0)} hPa/24h`);
+  if(maxGust>75) add('Storm-force gusts',3,`${num(maxGust,0)} km/h`,true);
+  else if(maxGust>55) add('Gale gusts',2,`${num(maxGust,0)} km/h`);
+  else if(maxGust>40) add('Strong wind',1,`${num(maxGust,0)} km/h`);
+  if(maxPP>80) add('High rain chance',2,`${num(maxPP,0)}%`);
+  else if(maxPP>50) add('Rain likely',1,`${num(maxPP,0)}%`);
+  if(rain>25) add('Heavy rainfall',1,`${num(rain,0)} mm`);
+  if(waveMax!=null){
+    if(waveMax>4) add('Very high surf',3,`${num(waveMax)} m`,true);
+    else if(waveMax>2.5) add('High surf',2,`${num(waveMax)} m`);
+    else if(waveMax>1.5) add('Elevated swell',1,`${num(waveMax)} m`);
+  }
+  if(storm) add('Thunderstorms',2,'next 24h',true);
+  else if(heavy) add('Heavy showers',1,'next 24h');
+
+  // --- vertical air column (isolated optional feed C) ---
+  let capeNow=null,capeMax=null,blh=null,frz=null,soil=null,t1000=null,t925=null,ws850=null,wd850=null,rh850=null;
+  if(C&&C.hourly){
+    const HC=C.hourly, cref=Date.parse(ct); let ic=0;
+    for(let k=0;k<HC.time.length;k++){ if(Date.parse(HC.time[k])<=cref) ic=k; else break; }
+    const atC=arr=>arr?arr[ic]:null;
+    const capeH=nextHours(HC.time,ct,HC.cape);
+    capeNow=atC(HC.cape); capeMax=capeH.length?Math.max(...capeH):capeNow;
+    blh=atC(HC.boundary_layer_height); frz=atC(HC.freezing_level_height); soil=atC(HC.soil_temperature_0cm);
+    t1000=atC(HC.temperature_1000hPa); t925=atC(HC.temperature_925hPa);
+    ws850=atC(HC.wind_speed_850hPa); wd850=atC(HC.wind_direction_850hPa); rh850=atC(HC.relative_humidity_850hPa);
+  }
+  const lapse=(t1000!=null&&t925!=null)?(t1000-t925):null;   // °C drop over ~600 m; steeper = more unstable
+  const invLow=(t925!=null&&t1000!=null)?(t925-t1000):null;
+  const inversion=invLow!=null&&invLow>-1.0;
+  const shear=(ws850!=null&&cur.wind_speed_10m!=null)?Math.abs(ws850-cur.wind_speed_10m):null;
+  const marineLayer=inversion&&blh!=null&&blh<1200&&(rh850==null||rh850>60);
+  if(capeMax!=null){
+    if(capeMax>2500) add('Extreme instability',3,`CAPE ${num(capeMax,0)}`,true);
+    else if(capeMax>1000) add('High instability',2,`CAPE ${num(capeMax,0)}`);
+    else if(capeMax>500) add('Moderate instability',1,`CAPE ${num(capeMax,0)}`);
+  }
+  if(shear!=null&&shear>45) add('Low-level wind shear',1,`Δ${num(shear,0)} km/h`);
+
+  const level = s>=6?'WARNING' : s>=3?'WATCH':'CALM';
+  return {score:s, level, factors:f, minP, drop, maxGust, maxPP, waveMax,
+    capeNow, capeMax, blh, frz, soil, shear, inversion, marineLayer, ws850, wd850, rh850, invLow, lapse};
+}
+
+// ---- render helpers ----
+function trendArrow(drop){
+  if(drop>4) return `<span class="arr down">↓</span>`;     // falling pressure = worsening
+  if(drop< -3) return `<span class="arr up">↑</span>`;
+  return `<span class="arr flat">→</span>`;
+}
+function fmtTideTime(t){ // "2026-05-30 14:23"
+  const [d,hm]=t.split(' ');const dt=new Date(d+'T'+hm);
+  const wd=dt.toLocaleDateString('en-US',{weekday:'short'});
+  return `${hm} <small style="color:var(--muted)">${wd}</small>`;
+}
+const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+function evMatch(EV,name){
+  if(!Array.isArray(EV)) return null;
+  const nk=norm(name).split(/[ ·]/)[0];
+  return EV.find(e=>{const en=norm(e.volcano_name||e.name||e.title||'');return en&&nk&&(en.includes(nk)||nk.includes(en.split(' ')[0]));})||null;
+}
+
+function renderCard(L, data){
+  const card=document.getElementById('card-'+L.id);
+  if(data.error){
+    card.querySelector('.cbody').innerHTML=`<div class="err">⚠ ${data.error}</div>`;
+    card.querySelector('.badge').outerHTML=`<div class="badge b-NA"><span class="dot"></span>No data</div>`;
+    return;
+  }
+  const {W,M,C,T,Q,EV}=data;
+  const R=computeRisk(W,M,C);
+  const cur=W.current, D=W.daily;
+  const [em,desc]=wmo(cur.weather_code);
+
+  const cMax=R.capeMax;
+  const capeLab = cMax==null?['—','var(--muted)'] : cMax>2500?['Extreme','var(--red)'] : cMax>1000?['Strong','var(--amber)'] : cMax>300?['Moderate','#C7CEDB'] : ['Minimal','var(--green)'];
+  const stab = cMax==null?['—','var(--muted)']
+      : (cMax>1000||(R.lapse!=null&&R.lapse>7.5))?['Unstable','var(--amber)']
+      : (cMax>300||(R.lapse!=null&&R.lapse>5.5))?['Marginal','#C7CEDB']
+      : R.inversion?['Capped / stable','var(--green)']:['Stable','var(--green)'];
+
+  // badge
+  const badge=card.querySelector('.badge');
+  badge.className='badge b-'+R.level;
+  badge.innerHTML=`<span class="dot"></span>${R.level==='CALM'?'Calm':R.level==='WATCH'?'Weather watch':'Weather warning'}`;
+
+  // weather section
+  const chips = R.factors.length
+    ? R.factors.map(x=>`<span class="chip ${x.crit?'r':''}"><span>${x.label}</span><span class="pt">+${x.pt}</span><span style="color:var(--dim)">${x.detail}</span></span>`).join('')
+    : `<span class="chip none">No adverse signals · score 0</span>`;
+
+  // moon phase -> spring/neap tide cross-reference
+  const moon=moonPhase(new Date());
+  const springEff = moon.isSpring ? SURF_FLOOD_M-0.6 : SURF_FLOOD_M;  // spring high water lowers the surf threshold for flooding
+  const moonLine=`<div style="display:flex;align-items:center;gap:11px;margin-bottom:13px;font-family:var(--mono);font-size:11px;color:var(--muted)">
+     <span style="font-size:22px;line-height:1">${moon.emoji}</span>
+     <span>${moon.name} · ${num(moon.illum*100,0)}% illum<br><span style="color:${moon.isSpring?'var(--amber)':moon.isNeap?'var(--blue)':'var(--dim)'}">${moon.isSpring?'spring tide — maximum range':moon.isNeap?'neap tide — minimum range':'intermediate range'}</span></span>
+   </div>`;
+
+  // tide + flood
+  let tideHTML, floodHTML='';
+  if(T && T.predictions){
+    const now=new Date();
+    const future=T.predictions.map(p=>({...p,dt:new Date(p.t.replace(' ','T'))})).filter(p=>p.dt>now);
+    const nh=future.find(p=>p.type==='H'), nl=future.find(p=>p.type==='L');
+    tideHTML=moonLine+`<div class="tide">
+      <div class="t hi"><div class="lab"><span>▲ Next high</span></div>
+        <div class="tm">${nh?fmtTideTime(nh.t):'—'}</div><div class="ht">${nh?num(nh.v,1)+' ft MLLW':''}</div></div>
+      <div class="t lo"><div class="lab"><span>▼ Next low</span></div>
+        <div class="tm">${nl?fmtTideTime(nl.t):'—'}</div><div class="ht">${nl?num(nl.v,1)+' ft MLLW':''}</div></div></div>`;
+    const surf=R.waveMax;
+    if(nh && surf!=null && surf>=springEff){
+      const crit = surf>4 || (moon.isSpring && surf>3.2);
+      floodHTML=`<div class="flood ${crit?'crit':'warn'}">⚠ Coastal flooding ${crit?'risk':'watch'} — ${num(surf)} m surf${moon.isSpring?' on a spring high tide':''} coincides with high tide</div>`;
+    } else {
+      floodHTML=`<div class="flood ok">○ No tide×surf flooding signal (surf ${surf!=null?num(surf)+' m':'—'} &lt; ${num(springEff,1)} m${moon.isSpring?' · spring-adj.':''})</div>`;
+    }
+  } else {
+    tideHTML=moonLine+`<div class="geo" style="font-size:11px;color:var(--muted)">No free CORS tide source for Japan — but moon phase above still indicates tidal range. Official heights: <a href="https://www.data.jma.go.jp/gmd/kaiyou/db/tide/suisan/index.php" target="_blank" style="color:var(--blue)">JMA Tide Tables</a>.</div>`;
+  }
+
+  // geophysical
+  let geoHTML;
+  if(Q && Q.features){
+    const near=Q.features.map(f=>{
+      const[lo,la]=f.geometry.coordinates;return {...f,km:haversine(L.lat,L.lon,la,lo)};
+    }).filter(f=>f.km<=RADIUS_KM).sort((a,b)=>b.properties.mag-a.properties.mag);
+    const big=near[0];
+    const tsu=near.some(f=>f.properties.tsunami===1);
+    geoHTML=`<div class="geo">
+      <div class="row"><span class="lbl">M4.5+ / 7d</span><span class="big">${near.length}</span>
+        <span style="color:var(--muted)">within ${RADIUS_KM} km</span>
+        ${tsu?'<span class="tsu">⚠ TSUNAMI FLAG</span>':''}</div>
+      ${big?`<div class="row"><span class="lbl">Largest</span><span class="big">M${num(big.properties.mag)}</span>
+        <span style="color:var(--muted);font-size:11px">${(big.properties.place||'').replace(/^\d+\s*km\s*/,'')} · ${Math.round(big.km)} km</span></div>`
+        :`<div class="row"><span class="lbl">Largest</span><span style="color:var(--muted)">none in window</span></div>`}
+    </div>`;
+  } else {
+    geoHTML=`<div class="err">⚠ seismic feed unavailable</div>`;
+  }
+  const volcHTML = L.volc.length
+    ? `<div class="volc">${L.volc.map(v=>{
+        const m=evMatch(EV,v.n);
+        const lvl=m?String(m.color_code||m.alert_level||m.alertLevel||'elevated').toUpperCase():'';
+        const col=/RED|WARNING/.test(lvl)?'var(--red)':/ORANGE|WATCH/.test(lvl)?'var(--orange)':/YELLOW|ADVISORY/.test(lvl)?'var(--amber)':'var(--green)';
+        return `<a href="${v.u}" target="_blank" rel="noopener"><span class="v" style="color:${m?col:'var(--orange)'}">▲</span>${v.n}${m?` <span style="color:${col};font-size:9px;letter-spacing:.08em;border:1px solid ${col};padding:1px 5px">${lvl}</span>`:''}</a>`;
+      }).join('')}</div>`
+    : `<div class="indep" style="font-style:normal;color:var(--muted)">No active volcanoes in immediate region.</div>`;
+
+  card.querySelector('.cbody').innerHTML=`
+    <div class="sect">
+      <h3><span class="ic">🛰️</span>Weather outlook<span class="tag">FORECAST · 24H</span></h3>
+      <div class="wxnow">
+        <div class="em">${em}</div>
+        <div class="t">${num(cur.temperature_2m,0)}<small>°C</small></div>
+        <div class="desc">${desc}
+          <span class="hl">feels ${num(cur.apparent_temperature,0)}° · ${cur.relative_humidity_2m}% RH · today ${num(D.temperature_2m_max?.[0],0)}°/${num(D.temperature_2m_min?.[0],0)}°</span>
+        </div>
+      </div>
+      <div class="readouts">
+        <div class="ro"><div class="k">Pressure</div><div class="v">${num(cur.pressure_msl,0)}<small> hPa</small> ${trendArrow(R.drop)}</div></div>
+        <div class="ro"><div class="k">Wind / gust</div><div class="v">${num(cur.wind_speed_10m,0)}<small>/${num(cur.wind_gusts_10m,0)} ${dir(cur.wind_direction_10m)}</small></div></div>
+        <div class="ro"><div class="k">Rain prob</div><div class="v">${num(R.maxPP,0)}<small>%</small></div></div>
+      </div>
+      <div class="chips">${chips}</div>
+    </div>
+
+    <div class="sect">
+      <h3><span class="ic">🌊</span>Marine (buoy-equiv. model)<span class="tag">WAVE · SWELL</span></h3>
+      <div class="readouts">
+        <div class="ro"><div class="k">Sig. wave H</div><div class="v">${num(M?.current?.wave_height)}<small> m</small></div></div>
+        <div class="ro"><div class="k">Period</div><div class="v">${num(M?.current?.wave_period,0)}<small> s</small></div></div>
+        <div class="ro"><div class="k">Swell H</div><div class="v">${num(M?.current?.swell_wave_height)}<small> m</small></div></div>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h3><span class="ic">🛩️</span>Air column · vertical profile<span class="tag">PILOT VIEW</span></h3>
+      <div class="readouts">
+        <div class="ro"><div class="k">CAPE</div><div class="v">${num(R.capeMax,0)}<small> J/kg</small></div><div class="k" style="margin-top:5px;color:${capeLab[1]}">${capeLab[0]}</div></div>
+        <div class="ro"><div class="k">Stability</div><div class="v" style="font-size:14px;color:${stab[1]}">${stab[0]}</div><div class="k" style="margin-top:5px">${R.inversion?'<span style="color:var(--amber)">inversion ▲</span>':'no cap'}</div></div>
+        <div class="ro"><div class="k">Ground temp</div><div class="v">${num(R.soil,0)}<small>°C</small></div><div class="k" style="margin-top:5px">air ${num(cur.temperature_2m,0)}°</div></div>
+      </div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:11px;line-height:1.7">
+        mixed layer ${R.blh!=null?num(R.blh,0)+' m':'—'} · freezing lvl ${R.frz!=null?num(R.frz,0)+' m':'—'}<br>
+        sfc→850 hPa shear ${R.shear!=null?num(R.shear,0)+' km/h':'—'} · winds aloft ${R.ws850!=null?num(R.ws850,0)+' km/h '+dir(R.wd850):'—'}
+      </div>
+      ${R.marineLayer?`<div class="flood warn" style="margin-top:11px">🌫️ Marine-layer inversion ≈ ${num(R.blh,0)} m — fog &amp; low ceilings likely (coastal &ldquo;gloom&rdquo;)</div>`:''}
+    </div>
+
+    <div class="sect">
+      <h3><span class="ic">🌙</span>Tides &amp; coastal flooding</h3>
+      ${tideHTML}
+      ${floodHTML}
+    </div>
+
+    <div class="sect">
+      <h3><span class="ic">🌋</span>Geophysical hazard<span class="tag">NOT WEATHER</span></h3>
+      ${geoHTML}
+      ${volcHTML}
+      <div class="indep">Independent of weather — shown for tsunami / seismic / ashfall awareness. Verify volcano alert levels at the official observatory.</div>
+    </div>`;
+}
+
+function scaffold(){
+  document.getElementById('grid').innerHTML=LOCATIONS.map(L=>`
+    <div class="card" id="card-${L.id}">
+      <div class="chead">
+        <div><div class="loc">${L.name}</div><div class="locsub">${L.sub} · ${num(L.lat,2)}, ${num(L.lon,2)}</div></div>
+        <div class="badge b-NA"><span class="dot"></span>loading</div>
+      </div>
+      <div class="cbody"><div class="loading">ACQUIRING TELEMETRY<div class="bar"><i></i></div></div></div>
+    </div>`).join('');
+}
+
+function timeAgo(ms){const s=(Date.now()-ms)/1000;if(s<3600)return Math.round(s/60)+'m';if(s<86400)return Math.round(s/3600)+'h';return Math.round(s/86400)+'d';}
+function kpColor(k){return k>=8?'var(--red)':k>=6?'var(--orange)':k>=5?'var(--amber)':k>=4?'#C7CEDB':'var(--green)';}
+function kpLabel(k){return k>=9?'G5 extreme storm':k>=8?'G4 severe storm':k>=7?'G3 strong storm':k>=6?'G2 moderate storm':k>=5?'G1 minor storm':k>=4?'active':'quiet–unsettled';}
+
+function renderGlobal(Q,SIG,KP){
+  // --- geomagnetic Kp ---
+  let kpHTML='<div class="err">geomagnetic feed unavailable</div>';
+  try{
+    let k=null;
+    if(Array.isArray(KP)&&KP.length>1){ const last=KP[KP.length-1]; k=parseFloat(last[1]); }
+    if(k!=null&&!isNaN(k)){
+      const segs=Array.from({length:9},(_,i)=>`<i style="background:${i<Math.round(k)?kpColor(k):'var(--border)'}"></i>`).join('');
+      kpHTML=`<div class="kp">
+        <div class="kpval" style="color:${kpColor(k)}">${num(k,0)}</div>
+        <div class="kpscale"><div class="kpbar">${segs}</div>
+          <div class="kpmeta" style="color:${kpColor(k)};margin-top:9px">Kp ${num(k,0)} — ${kpLabel(k)}</div>
+          <div class="kpmeta">Planetary K-index · global · <span style="color:var(--dim)">space weather; not a tropospheric weather driver</span></div>
+        </div></div>`;
+    }
+  }catch(e){}
+  // --- Ring of Fire recent major quakes ---
+  let rofHTML='<div class="err">seismic feed unavailable</div>';
+  const feats=[]; const push=s=>{if(s&&s.features)s.features.forEach(f=>feats.push(f));};
+  push(Q); push(SIG);
+  if(feats.length){
+    const seen=new Set();
+    const major=feats.filter(f=>{
+      if(seen.has(f.id))return false; seen.add(f.id);
+      const[lo,la]=f.geometry.coordinates;
+      return f.properties.mag>=5.5 && inRingOfFire(la,lo);
+    }).sort((a,b)=>b.properties.time-a.properties.time).slice(0,6);
+    if(major.length){
+      rofHTML='<div class="rof">'+major.map(f=>{
+        const p=f.properties, tsu=p.tsunami===1;
+        return `<div class="q"><span class="mag">M${num(p.mag)}</span>
+          <span class="pl">${(p.place||'').replace(/^\d+\s*km\s*/,'')}${tsu?' <span style="color:var(--red)">⚠ tsu</span>':''}</span>
+          <span class="tm">${timeAgo(p.time)} ago</span></div>`;
+      }).join('')+'</div>';
+    } else rofHTML='<div class="kpmeta" style="color:var(--muted)">No M5.5+ Pacific-rim events in the catalog window.</div>';
+  }
+  document.getElementById('globalstrip').innerHTML=`
+    <div class="gstrip">
+      <div class="gbox"><h4><span>🧲</span>Geomagnetic activity<span class="tag">MAGNETISM</span></h4>${kpHTML}</div>
+      <div class="gbox"><h4><span>🌋</span>Ring of Fire · recent major quakes<span class="tag">M5.5+ · NOT WEATHER</span></h4>${rofHTML}</div>
+    </div>`;
+}
+
+function renderDiag(diag){
+  let okCount=0,total=0,netBlocked=0;
+  const tally=stat=>{
+    if(stat==='n/a') return {na:true,ok:false};
+    total++; const ok=(stat==='ok'); if(ok)okCount++;
+    if(typeof stat==='string'&&/network|CORS|Failed to fetch/i.test(stat)) netBlocked++;
+    return {ok,na:false};
+  };
+  const gsec=Object.entries(diag.global).map(([k,v])=>{
+    const {ok}=tally(v);
+    return `<div class="drow"><span class="ddot" style="background:${ok?'var(--green)':'var(--red)'}"></span><span class="dname">${k}</span><span class="dstat" style="color:${ok?'var(--muted)':'var(--red)'}">${ok?'OK':v}</span></div>`;
+  }).join('');
+  const lsec=LOCATIONS.map(L=>{
+    const d=diag.loc[L.id]||{};
+    const dots=['weather','marine','tide','column'].map(key=>{
+      const v=d[key]; if(v===undefined) return '';
+      const {ok,na}=tally(v);
+      const col=na?'var(--dim)':ok?'var(--green)':'var(--red)';
+      return `<span class="ddot" title="${key}: ${na?'n/a':ok?'OK':v}" style="background:${col}"></span>`;
+    }).join('');
+    return `<div class="drow"><span class="dname" style="min-width:118px">${L.name}</span><span style="display:flex;gap:6px;align-items:center">${dots}</span><span class="dstat" style="color:var(--dim);font-size:9px">wx·sea·tide·col</span></div>`;
+  }).join('');
+
+  const allBlocked = netBlocked>0 && okCount===0;
+  const banner = allBlocked
+    ? `<div class="note" style="border-left-color:var(--red);margin-bottom:14px"><b style="color:var(--red)">Every network request is being blocked.</b> The page can't reach any data source — this happens in a sandboxed preview or when opened from a <span class="m">file://</span> path. Download the file and open it in a normal browser, or host it over <span class="m">https://</span> (e.g. GitHub Pages). The feeds themselves are fine; the page just can't reach them from here.</div>`
+    : '';
+  const summary = (okCount===total)
+    ? `<span style="color:var(--green)">● all ${total} feeds OK</span>`
+    : `<span style="color:var(--amber)">● ${okCount}/${total} feeds OK — ${total-okCount} failed</span>`;
+
+  document.getElementById('diag').innerHTML = banner + `
+    <details class="diagbox" ${okCount===total?'':'open'}>
+      <summary>${summary} <span style="color:var(--dim);font-size:10px">· tap for per-feed status</span></summary>
+      <div class="dgrid">
+        <div><div class="dhdr">Data sources</div>${gsec}</div>
+        <div><div class="dhdr">Per location · hover dots</div>${lsec}</div>
+      </div>
+    </details>`;
+}
+
+async function load(){
+  const btn=document.getElementById('refreshBtn');btn.classList.add('busy');
+  scaffold();
+  document.getElementById('globalstrip').innerHTML='';
+  document.getElementById('diag').innerHTML='';
+  const diag={global:{},loc:{}};
+  const reason=res=>res.status==='fulfilled'?'ok':((res.reason&&res.reason.message)||String(res.reason||'failed'));
+
+  const g=await Promise.allSettled([fetchQuakes(),fetchSigQuakes(),fetchKp(),fetchElevatedVolcanoes()]);
+  const Q =g[0].status==='fulfilled'?g[0].value:null;
+  const SIG=g[1].status==='fulfilled'?g[1].value:null;
+  const KP =g[2].status==='fulfilled'?g[2].value:null;
+  const EV =g[3].status==='fulfilled'?g[3].value:null;
+  diag.global['USGS quakes (M4.5+/wk)']=reason(g[0]);
+  diag.global['USGS significant (mo)']=reason(g[1]);
+  diag.global['NOAA SWPC Kp']=reason(g[2]);
+  diag.global['USGS volcanoes (alert)']=reason(g[3]);
+  renderGlobal(Q,SIG,KP);
+
+  await Promise.all(LOCATIONS.map(async L=>{
+    const res=await Promise.allSettled([fetchWeather(L),fetchMarine(L),fetchTide(L),fetchColumn(L)]);
+    const W=res[0].status==='fulfilled'?res[0].value:null;
+    const M=res[1].status==='fulfilled'?res[1].value:null;
+    const T=res[2].status==='fulfilled'?res[2].value:null;
+    const C=res[3].status==='fulfilled'?res[3].value:null;
+    diag.loc[L.id]={
+      weather:reason(res[0]),
+      marine:reason(res[1]),
+      tide:L.tide?reason(res[2]):'n/a',
+      column:reason(res[3])
+    };
+    if(!W){ renderCard(L,{error:'Weather feed failed — '+diag.loc[L.id].weather}); return; }
+    renderCard(L,{W,M,C,T,Q,EV});
+  }));
+
+  renderDiag(diag);
+  const now=new Date();
+  document.getElementById('stamp').textContent='updated '+now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false})+' · '+now.toLocaleDateString();
+  btn.classList.remove('busy');
+}
+document.getElementById('refreshBtn').addEventListener('click',load);
+load();
+</script>
+</body>
+</html>
