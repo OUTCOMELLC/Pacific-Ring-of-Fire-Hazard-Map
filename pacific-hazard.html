@@ -67,6 +67,18 @@
   .gstrip{display:grid;grid-template-columns:1fr 1.35fr;gap:16px;margin-bottom:22px;}
   @media(max-width:840px){.gstrip{grid-template-columns:1fr}}
   .gbox{border:1px solid var(--border);background:var(--panel);padding:14px 16px;animation:rise .5s both;}
+  #typhoonstrip{margin-bottom:22px;}
+  #typhoonstrip:empty{margin:0;}
+  .tcbox{border-left:3px solid var(--teal);}
+  .tcrows{display:flex;flex-direction:column;gap:10px;margin-top:6px;}
+  .tc{border:1px solid var(--border);border-left:3px solid var(--teal);padding:9px 11px;background:var(--panel2);}
+  .tctop{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap;}
+  .tcname{font-family:var(--disp);font-weight:700;font-size:15px;}
+  .tccat{font-family:var(--mono);font-size:9.5px;color:#0B0F19;padding:2px 7px;font-weight:600;white-space:nowrap;}
+  .tcmeta{font-family:var(--mono);font-size:11px;color:#C7CEDB;margin-top:4px;line-height:1.5;}
+  .tclinks{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:11px;border-top:1px solid var(--border);padding-top:9px;line-height:1.8;}
+  .tclinks a{color:var(--blue);text-decoration:none;}
+  .tclinks a:hover{text-decoration:underline;}
   .gbox h4{font-family:var(--mono);font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;
     margin-bottom:13px;display:flex;align-items:center;gap:8px;}
   .gbox h4 .tag{margin-left:auto;font-size:9px;color:var(--dim);border:1px solid var(--border);padding:2px 6px;letter-spacing:.12em;}
@@ -244,6 +256,8 @@
 
   <div id="diag"></div>
 
+  <div id="typhoonstrip"></div>
+
   <div id="globalstrip"></div>
 
   <div class="grid" id="grid"></div>
@@ -377,6 +391,11 @@ async function fetchAmedas(){ // JMA AMeDAS — real measured surface obs (Japan
   const obs=await getJSON('https://www.jma.go.jp/bosai/amedas/data/map/'+ts+'.json');
   if(!AMEDAS_TABLE){ try{ AMEDAS_TABLE=await getJSON('https://www.jma.go.jp/bosai/amedas/const/amedastable.json'); }catch(e){} }
   return {obs, table:AMEDAS_TABLE, time:t};
+}
+async function fetchTyphoons(){ // NOAA NHC — active tropical cyclones; keep Pacific basins (Central/East)
+  const d=await getJSON('https://www.nhc.noaa.gov/CurrentStorms.json');
+  const arr=(d&&Array.isArray(d.activeStorms))?d.activeStorms:[];
+  return arr.filter(s=>/^(cp|ep)/i.test(s.id||''));   // cp = Central Pacific (Hawaii), ep = East Pacific
 }
 
 // Pacific "Ring of Fire" bounding test (rough horseshoe around the Pacific basin)
@@ -805,6 +824,50 @@ function renderGlobal(Q,SIG,KP){
     </div>`;
 }
 
+function tcCategory(cls,ktStr){
+  const kt=parseInt(ktStr,10);
+  if(cls==='HU'||cls==='TY'||cls==='MH'){
+    const c=kt>=137?5:kt>=113?4:kt>=96?3:kt>=83?2:1;
+    return {label:'Hurricane Cat '+c, col:c>=4?'var(--red)':c>=3?'var(--orange)':'var(--amber)'};
+  }
+  if(cls==='STS') return {label:'Severe Tropical Storm', col:'var(--orange)'};
+  if(cls==='TS')  return {label:'Tropical Storm', col:'var(--amber)'};
+  if(cls==='TD')  return {label:'Tropical Depression', col:'var(--blue)'};
+  if(cls==='PTC'||cls==='PT') return {label:'Potential Cyclone', col:'var(--blue)'};
+  return {label:cls||'System', col:'var(--teal)'};
+}
+function renderTyphoons(storms){
+  const el=document.getElementById('typhoonstrip'); if(!el) return;
+  const links=`<div class="tclinks">Official tracking — Western Pacific (Japan · Guam): `+
+    `<a href="https://www.jma.go.jp/bosai/map.html#contents=typhoon&amp;lang=en" target="_blank" rel="noopener">JMA RSMC Tokyo 台風情報 ↗</a> · `+
+    `Central / East Pacific (Hawaii): <a href="https://www.nhc.noaa.gov/cyclones/" target="_blank" rel="noopener">NHC / CPHC ↗</a><br>`+
+    `<span style="color:var(--dim)">Tropical cyclones are a Wind &amp; Water hazard. Live rows below are NHC Central/East-Pacific systems; Western-Pacific typhoons that threaten Japan are at the JMA link (that feed isn't browser-accessible here).</span></div>`;
+  let body;
+  if(storms===null){
+    body=`<div class="tcmeta" style="color:var(--muted)">Live NHC feed unavailable in-browser (CORS/offline) — use the official trackers below.</div>`;
+  } else if(!storms.length){
+    body=`<div class="tcmeta" style="color:var(--muted)">No active tropical cyclones in the Central or East Pacific right now (NHC). For the Western Pacific basin affecting Japan &amp; Guam, check JMA below.</div>`;
+  } else {
+    body='<div class="tcrows">'+storms.map(s=>{
+      const cat=tcCategory(s.classification,s.intensity);
+      const kt=parseInt(s.intensity,10);
+      const basin=/^cp/i.test(s.id)?'Central Pacific':/^ep/i.test(s.id)?'East Pacific':'Pacific';
+      const la=s.latitudeNumeric, lo=s.longitudeNumeric;
+      let near=null,nd=1e9;
+      if(la!=null&&lo!=null) LOCATIONS.forEach(L=>{const d=haversine(L.lat,L.lon,la,lo); if(d<nd){nd=d;near=L;}});
+      const mph=isNaN(kt)?null:Math.round(kt*1.15078), kmh=isNaN(kt)?null:Math.round(kt*1.852);
+      const mv=(s.movementDir!=null&&s.movementSpeed!=null)?`${AMDIR[Math.round(s.movementDir/22.5)%16]} ${s.movementSpeed} kt`:'—';
+      return `<div class="tc">
+        <div class="tctop"><span class="tcname" style="color:${cat.col}">🌀 ${s.name||s.id}</span><span class="tccat" style="background:${cat.col}">${cat.label}</span></div>
+        <div class="tcmeta">${basin} · ${la!=null?la.toFixed(1)+'°':'—'}, ${lo!=null?lo.toFixed(1)+'°':'—'} · moving ${mv}</div>
+        <div class="tcmeta">Max winds ${isNaN(kt)?'—':kt+' kt'}${mph?` (${mph} mph · ${kmh} km/h)`:''} · central ${s.pressure?s.pressure+' hPa':'—'} <span style="color:var(--dim)">· NHC 1-min sustained</span></div>
+        ${near?`<div class="tcmeta">Nearest console city: <b>${near.name}</b> ~${Math.round(nd)} km away</div>`:''}
+      </div>`;
+    }).join('')+'</div>';
+  }
+  el.innerHTML=`<div class="gbox tcbox"><h4><span>🌀</span>台風情報 · Tropical cyclones<span class="tag">WIND &amp; WATER</span></h4>${body}${links}</div>`;
+}
+
 function renderDiag(diag){
   let okCount=0,total=0,netBlocked=0;
   const tally=stat=>{
@@ -858,18 +921,21 @@ async function load(){
   const reason=res=>res.status==='fulfilled'?'ok':((res.reason&&res.reason.message)||String(res.reason||'failed'));
 
   setStamp('loading global feeds…');
-  const g=await Promise.allSettled([fetchQuakes(),fetchSigQuakes(),fetchKp(),fetchElevatedVolcanoes(),fetchAmedas()]);
+  const g=await Promise.allSettled([fetchQuakes(),fetchSigQuakes(),fetchKp(),fetchElevatedVolcanoes(),fetchAmedas(),fetchTyphoons()]);
   const Q =g[0].status==='fulfilled'?g[0].value:null;
   const SIG=g[1].status==='fulfilled'?g[1].value:null;
   const KP =g[2].status==='fulfilled'?g[2].value:null;
   const EV =g[3].status==='fulfilled'?g[3].value:null;
   const A  =g[4].status==='fulfilled'?g[4].value:null;
+  const TY =g[5].status==='fulfilled'?g[5].value:null;
   diag.global['USGS quakes (M4.5+/wk)']=reason(g[0]);
   diag.global['USGS significant (mo)']=reason(g[1]);
   diag.global['NOAA SWPC Kp']=reason(g[2]);
   diag.global['USGS volcanoes (alert)']=reason(g[3]);
   diag.global['JMA AMeDAS (Japan obs)']=reason(g[4]);
+  diag.global['NHC tropical cyclones']=reason(g[5]);
   try{ renderGlobal(Q,SIG,KP); }catch(e){ try{document.getElementById('globalstrip').innerHTML='<div class="err">global strip error: '+(e&&e.message||e)+'</div>';}catch(_){} }
+  try{ renderTyphoons(TY); }catch(e){ try{document.getElementById('typhoonstrip').innerHTML='';}catch(_){} }
 
   setStamp('loading city feeds…');
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
