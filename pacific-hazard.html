@@ -804,13 +804,18 @@ function renderDiag(diag){
 }
 
 async function load(){
+  const BUILD='build 2026-05-31-d';
   const btn=document.getElementById('refreshBtn');btn.classList.add('busy');
+  const setStamp=t=>{const s=document.getElementById('stamp'); if(s) s.textContent=BUILD+' · '+t;};
+  setStamp('booting…');
   scaffold();
+  try{
   document.getElementById('globalstrip').innerHTML='';
   document.getElementById('diag').innerHTML='';
   const diag={global:{},loc:{}};
   const reason=res=>res.status==='fulfilled'?'ok':((res.reason&&res.reason.message)||String(res.reason||'failed'));
 
+  setStamp('loading global feeds…');
   const g=await Promise.allSettled([fetchQuakes(),fetchSigQuakes(),fetchKp(),fetchElevatedVolcanoes()]);
   const Q =g[0].status==='fulfilled'?g[0].value:null;
   const SIG=g[1].status==='fulfilled'?g[1].value:null;
@@ -820,11 +825,12 @@ async function load(){
   diag.global['USGS significant (mo)']=reason(g[1]);
   diag.global['NOAA SWPC Kp']=reason(g[2]);
   diag.global['USGS volcanoes (alert)']=reason(g[3]);
-  renderGlobal(Q,SIG,KP);
+  try{ renderGlobal(Q,SIG,KP); }catch(e){ try{document.getElementById('globalstrip').innerHTML='<div class="err">global strip error: '+(e&&e.message||e)+'</div>';}catch(_){} }
 
+  setStamp('loading city feeds…');
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   await Promise.all(LOCATIONS.map(async (L,i)=>{
-    await sleep(i*180);   // stagger to avoid Open-Meteo burst rate-limit (429) across six cities
+    await sleep(i*180);   // stagger to avoid Open-Meteo burst rate-limit (429) across cities
     const res=await Promise.allSettled([fetchWeather(L),fetchMarine(L),fetchTide(L),fetchColumn(L)]);
     const W=res[0].status==='fulfilled'?res[0].value:null;
     const M=res[1].status==='fulfilled'?res[1].value:null;
@@ -837,12 +843,20 @@ async function load(){
       column:reason(res[3])
     };
     if(!W){ renderCard(L,{error:'Weather feed failed — '+diag.loc[L.id].weather}); return; }
-    renderCard(L,{W,M,C,T,Q,EV});
+    try{ renderCard(L,{W,M,C,T,Q,EV}); }
+    catch(err){
+      const card=document.getElementById('card-'+L.id);
+      if(card){ const b=card.querySelector('.cbody'); if(b) b.innerHTML='<div class="err">⚠ render error ('+L.name+'): '+(err&&err.message||err)+'</div>'; }
+    }
   }));
 
   renderDiag(diag);
   const now=new Date();
-  document.getElementById('stamp').textContent='updated '+now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false})+' · '+now.toLocaleDateString();
+  setStamp('updated '+now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false}));
+  }catch(err){
+    document.querySelectorAll('.cbody').forEach(b=>{ if(/ACQUIRING TELEMETRY/.test(b.innerHTML)) b.innerHTML='<div class="err">⚠ load error: '+(err&&err.message||err)+'</div>'; });
+    const st=document.getElementById('stamp'); if(st) st.textContent='load error — see cards';
+  }
   btn.classList.remove('busy');
 }
 document.getElementById('refreshBtn').addEventListener('click',load);
