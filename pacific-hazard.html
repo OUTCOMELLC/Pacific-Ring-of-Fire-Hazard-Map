@@ -264,13 +264,13 @@ const RADIUS_KM = 1200;            // seismicity catchment per location
 const SURF_FLOOD_M = 3.0;          // surf threshold that makes a high tide a flooding concern
 
 const LOCATIONS = [
+  { id:'hk', name:'Hakata Port', sub:'Fukuoka · 博多港', lat:33.61, lon:130.40, tz:'Asia/Tokyo', fog:true,
+    mLat:33.70, mLon:130.30, tide:null, tideName:null,
+    volc:[] },
   { id:'ho', name:'Honshu', sub:'Tokyo · 東京', lat:35.68, lon:139.69, tz:'Asia/Tokyo',
     mLat:35.10, mLon:140.30, tide:null, tideName:null,
     volc:[{n:'Mt. Fuji 富士山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_4.html'},
           {n:'Asama 浅間山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_3.html'}] },
-  { id:'hk', name:'Hakata Port', sub:'Fukuoka · 博多港', lat:33.61, lon:130.40, tz:'Asia/Tokyo', fog:true,
-    mLat:33.70, mLon:130.30, tide:null, tideName:null,
-    volc:[] },
   { id:'la', name:'Los Angeles', sub:'Santa Monica Bay', lat:34.05, lon:-118.24, tz:'America/Los_Angeles', fog:true,
     mLat:33.85, mLon:-118.45, tide:'9410660', tideName:'Los Angeles',
     volc:[] },
