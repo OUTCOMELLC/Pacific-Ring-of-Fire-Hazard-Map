@@ -54,6 +54,23 @@
   .legend .hdr{color:var(--muted);letter-spacing:.12em;text-transform:uppercase;font-size:9px;}
   .note{font-family:var(--mono);font-size:10.5px;color:var(--dim);line-height:1.7;margin-top:14px;border-top:1px solid var(--border);padding-top:13px;}
   .note a{color:var(--muted);}
+
+  /* mobile: smaller header, taller-but-fitting map, compact legend + note */
+  @media(max-width:620px){
+    .wrap{padding:0 11px;}
+    header{padding:14px 0 12px;gap:11px;}
+    .mark{height:24px;margin-right:11px;}
+    h1{font-size:16px;} h1 .s{font-size:8.5px;letter-spacing:.12em;}
+    .hctl{font-size:10px;gap:9px;width:100%;justify-content:space-between;}
+    button.refresh{padding:7px 10px;font-size:10px;}
+    .nav{font-size:10px;}
+    .tab{font-size:10.5px;padding:8px 9px;}
+    #map{height:58vh;min-height:320px;}
+    .legend{gap:10px 14px;font-size:9px;margin-top:11px;}
+    .legend i{width:9px;height:9px;}
+    .note{font-size:9px;line-height:1.6;margin-top:11px;padding-top:11px;}
+    .leaflet-popup-content{font-size:11px;margin:9px 11px;}
+  }
 </style>
 </head>
 <body>
@@ -162,6 +179,9 @@ function initMap(){
     attribution:'&copy; OpenStreetMap &copy; CARTO · waves Open-Meteo · buoys NDBC/NOWPHAS'
   }).addTo(map);
   layer=L.layerGroup().addTo(map);
+  setTimeout(()=>map.invalidateSize(),250);   // iOS Safari: recompute size or tiles stay blank
+  window.addEventListener('resize',()=>map.invalidateSize());
+  window.addEventListener('orientationchange',()=>setTimeout(()=>map.invalidateSize(),300));
 }
 function renderMarkers(){
   layer.clearLayers();

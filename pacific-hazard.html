@@ -589,8 +589,9 @@ function renderCard(L, data){
 
   // official watch/warning authority for this city (JMA for Japan, NWS for US)
   const JMA_OFFICE={hk:'400000',ng:'420000',mz:'450000',ho:'130000',tb:'130000'};
+  const jo=JMA_OFFICE[L.id]||'010000';
   const verifyLink = L.tz==='Asia/Tokyo'
-    ? `<a href="https://www.jma.go.jp/bosai/warning/#area_type=offices&amp;area_code=${JMA_OFFICE[L.id]||'010000'}" target="_blank" rel="noopener">JMA 気象警報・注意報 ↗</a>`
+    ? `<a href="https://www.jma.go.jp/bosai/forecast/#area_type=offices&amp;area_code=${jo}" target="_blank" rel="noopener">JMA 天気予報 ↗</a> · <a href="https://www.jma.go.jp/bosai/warning/#area_type=offices&amp;area_code=${jo}" target="_blank" rel="noopener">気象警報・注意報 ↗</a>`
     : `<a href="https://forecast.weather.gov/MapClick.php?lat=${L.lat}&amp;lon=${L.lon}" target="_blank" rel="noopener">NWS forecast &amp; alerts ↗</a>`;
   const amedasHTML = (L.tz==='Asia/Tokyo' && data.A) ? amedasLine(L,data.A) : '';
 

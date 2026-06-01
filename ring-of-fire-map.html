@@ -28,7 +28,7 @@
   .nav a{color:var(--muted);text-decoration:none;padding:6px 11px;border:1px solid var(--border);letter-spacing:.04em;transition:.15s;}
   .nav a:hover{color:#fff;border-color:var(--muted);}
   .nav a.on{color:var(--bg);background:var(--orange);border-color:var(--orange);font-weight:600;}
-  #wrap{flex:1;position:relative;}
+  #wrap{flex:1 1 auto;position:relative;min-height:72vh;}
   #map{position:absolute;inset:0;background:#0A0E17;}
   .nolf{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:30px;text-align:center;
     font-family:var(--mono);font-size:13px;color:var(--muted);line-height:1.7;}
@@ -59,6 +59,23 @@
   .legend .row{display:flex;align-items:center;gap:8px;}
   .legend .sw{width:11px;height:11px;border-radius:50%;flex:none;}
   .legend .tri{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;}
+
+  /* mobile: shrink overlays so the map is visible */
+  @media(max-width:620px){
+    header{padding:9px 12px;gap:8px;}
+    .mark{height:20px;margin-right:10px;}
+    h1{font-size:14px;} h1 .s{font-size:8px;letter-spacing:.1em;margin-top:4px;}
+    #status{font-size:9.5px;}
+    button.rf{padding:6px 9px;font-size:10px;}
+    .nav{font-size:9.5px;width:100%;order:5;gap:3px;}
+    .nav a{padding:5px 8px;}
+    .frame{max-width:62%;font-size:9.5px;padding:7px 9px;line-height:1.4;top:8px;left:8px;}
+    .frame .m{font-size:8px;margin-top:4px;}
+    .legend{font-size:8.5px;padding:7px 9px;bottom:8px;left:8px;line-height:1.45;}
+    .legend h4{font-size:7.5px;margin-bottom:4px;}
+    .legend .sw{width:9px;height:9px;}
+    .leaflet-control-layers-expanded{padding:8px 10px;font-size:11px;}
+  }
 
   /* leaflet dark theming */
   .leaflet-container{background:#0A0E17;font-family:var(--mono);}
@@ -243,6 +260,11 @@ if(typeof L==='undefined'){
     subdomains:'abcd',maxZoom:19,
     attribution:'&copy; OpenStreetMap &copy; CARTO · quakes USGS · Japan JMA防災/P2P地震情報 · volcanoes GVP/USGS · aircraft airplanes.live · buoys NDBC/NOWPHAS'
   }).addTo(map);
+  setTimeout(()=>map.invalidateSize(),250);   // iOS Safari: tiles stay blank until size is recomputed
+  setTimeout(()=>map.invalidateSize(),900);
+  window.addEventListener('load',()=>map.invalidateSize());
+  window.addEventListener('resize',()=>map.invalidateSize());
+  window.addEventListener('orientationchange',()=>setTimeout(()=>map.invalidateSize(),300));
 
   const triIcon=(col,size)=>L.divIcon({className:'',iconSize:[size,size],iconAnchor:[size/2,size-1],
     html:`<svg width="${size}" height="${size}" viewBox="0 0 20 20"><polygon points="10,1 19,18 1,18" fill="${col}" stroke="#0B0F19" stroke-width="1.6"/></svg>`});
