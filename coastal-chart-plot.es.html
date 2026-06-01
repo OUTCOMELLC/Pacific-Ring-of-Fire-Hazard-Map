@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa de Boyas Costeras</title>
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+  :root{
+    --bg:#0B0F19;--panel:#141B2D;--panel2:#0A0E17;--border:#1F2937;--text:#E5E9F0;--muted:#6B7280;--dim:#475569;
+    --orange:#FB8102;--blue:#3B82F6;--green:#22C55E;--amber:#F59E0B;--red:#EF4444;--teal:#2DD4BF;
+    --mono:'DM Mono',ui-monospace,monospace;--disp:'Saira',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--disp);padding:0 0 40px;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1280px;margin:0 auto;padding:0 16px;}
+  header{padding:20px 0 16px;border-bottom:1px solid var(--border);margin-bottom:14px;display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;}
+  .mark{width:12px;height:30px;background:var(--orange);box-shadow:16px 0 0 var(--teal);margin-right:16px;flex:none;}
+  h1{font-weight:800;font-size:22px;letter-spacing:.02em;text-transform:uppercase;line-height:1;}
+  h1 .s{display:block;font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.2em;color:var(--muted);margin-top:6px;}
+  .hctl{margin-left:auto;display:flex;align-items:center;gap:13px;font-family:var(--mono);font-size:11px;color:var(--muted);}
+  button.refresh{font-family:var(--mono);font-size:11px;letter-spacing:.06em;background:transparent;color:var(--text);
+    border:1px solid var(--border);padding:8px 13px;cursor:pointer;text-transform:uppercase;display:flex;align-items:center;gap:8px;}
+  button.refresh:hover{border-color:var(--orange);color:var(--orange);}
+  button.refresh .d{width:7px;height:7px;border-radius:50%;background:var(--green);flex:none;}
+  button.refresh.busy .d{background:var(--amber);animation:pulse 1s infinite;}
+  @keyframes pulse{50%{opacity:.25}}
+  .nav{display:flex;gap:4px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;margin-bottom:14px;}
+  .nav a{color:var(--muted);text-decoration:none;padding:5px 11px;border:1px solid var(--border);letter-spacing:.04em;transition:.15s;}
+  .nav a:hover{color:#fff;border-color:var(--muted);}
+  .nav a.on{color:#0B0F19;background:var(--orange);border-color:var(--orange);font-weight:600;}
+  .langlinks{display:inline-flex;gap:4px;margin-left:auto;}
+  .langlinks a{color:var(--muted);text-decoration:none;padding:5px 10px;border:1px solid var(--border);}
+  .langlinks a:hover{color:var(--text);border-color:var(--muted);}
+  .langlinks a.on{color:var(--teal);border-color:var(--teal);font-weight:600;}
+
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:14px;flex-wrap:wrap;}
+  .tab{font-family:var(--mono);font-size:12px;letter-spacing:.04em;padding:10px 15px;cursor:pointer;color:var(--muted);
+    border-bottom:2px solid transparent;margin-bottom:-1px;text-transform:uppercase;}
+  .tab:hover{color:var(--text);}
+  .tab.on{color:var(--orange);border-bottom-color:var(--orange);}
+
+  #map{height:70vh;min-height:440px;width:100%;border:1px solid var(--border);background:#0A0E17;}
+  .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#141B2D;color:#E5E9F0;border:1px solid #1F2937;border-radius:0;}
+  .leaflet-popup-content{font-family:var(--mono);font-size:11.5px;line-height:1.5;margin:11px 13px;}
+  .leaflet-container a.leaflet-popup-close-button{color:#6B7280;}
+  .leaflet-container{background:#0A0E17;}
+  .bnm{font-family:var(--disp);font-size:15px;font-weight:700;}
+  .bco{color:#6B7280;font-size:10px;margin:4px 0 8px;}
+  .brw{display:flex;justify-content:space-between;gap:12px;padding:2px 0;border-bottom:1px solid rgba(31,41,55,.6);}
+  .brw .k{color:#6B7280;} .brw .val{text-align:right;} .bbig{font-size:18px;font-weight:600;}
+  .bsrc{color:#475569;font-size:9.5px;margin-top:9px;line-height:1.5;}
+
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-family:var(--mono);font-size:10.5px;color:#C7CEDB;align-items:center;}
+  .legend .grp{display:flex;gap:9px;align-items:center;}
+  .legend i{width:11px;height:11px;border-radius:50%;display:inline-block;}
+  .legend .hdr{color:var(--muted);letter-spacing:.12em;text-transform:uppercase;font-size:9px;}
+  .note{font-family:var(--mono);font-size:10.5px;color:var(--dim);line-height:1.7;margin-top:14px;border-top:1px solid var(--border);padding-top:13px;}
+  .note a{color:var(--muted);}
+
+  /* mobile: smaller header, taller-but-fitting map, compact legend + note */
+  @media(max-width:620px){
+    .wrap{padding:0 11px;}
+    header{padding:14px 0 12px;gap:11px;}
+    .mark{height:24px;margin-right:11px;}
+    h1{font-size:16px;} h1 .s{font-size:8.5px;letter-spacing:.12em;}
+    .hctl{font-size:10px;gap:9px;width:100%;justify-content:space-between;}
+    button.refresh{padding:7px 10px;font-size:10px;}
+    .nav{font-size:10px;}
+    .tab{font-size:10.5px;padding:8px 9px;}
+    #map{height:58vh;min-height:320px;}
+    .legend{gap:10px 14px;font-size:9px;margin-top:11px;}
+    .legend i{width:9px;height:9px;}
+    .note{font-size:9px;line-height:1.6;margin-top:11px;padding-top:11px;}
+    .leaflet-popup-content{font-size:11px;margin:9px 11px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="nav">
+    <a href="index.html#es" data-i18n="navHome">⌂ Home</a>
+    <a href="pacific-hazard.es.html" data-i18n="navDash">🛰 Dashboard</a>
+    <a href="ring-of-fire-map.es.html" data-i18n="navMap">🌋 Ring of Fire Map</a>
+    <a href="coastal-chart-plot.es.html" class="on" data-i18n="navBuoy">🛟 Buoy Map</a>
+    <span class="langlinks"><a href="coastal-chart-plot.html">EN</a><a href="coastal-chart-plot.ja.html" lang="ja">日本語</a><a href="coastal-chart-plot.es.html" class="on" lang="es">Español</a></span>
+  </nav>
+  <header>
+    <div class="mark"></div>
+    <div><h1><span data-i18n="title">Coastal Buoy Map</span><span class="s" data-i18n="sub">Pacific buoy network · live significant wave height per station</span></h1></div>
+    <div class="hctl"><span id="stamp">—</span><button class="refresh" id="refreshBtn"><span class="d"></span><span data-i18n="refreshWaves">Refresh waves</span></button></div>
+  </header>
+
+  <div class="tabs" id="tabs"></div>
+  <div id="map"></div>
+
+  <div class="legend">
+    <span class="hdr" data-i18n="legHdr">Sig. wave H</span>
+    <span class="grp"><i style="background:var(--teal)"></i>&lt;1 m</span>
+    <span class="grp"><i style="background:var(--blue)"></i>1–2 m</span>
+    <span class="grp"><i style="background:var(--amber)"></i>2–3 m</span>
+    <span class="grp"><i style="background:var(--orange)"></i>3–4 m</span>
+    <span class="grp"><i style="background:var(--red)"></i>&gt;4 m</span>
+    <span class="grp"><i style="background:var(--dim)"></i><span data-i18n="legNoData">no data</span></span>
+    <span class="grp" style="color:var(--dim)" data-i18n="legSource">● NDBC real · ■ NOWPHAS/JMA approx · click for live detail</span>
+  </div>
+  <div class="note" data-i18n="note">
+    Wave height is a model value (Open-Meteo Marine) sampled at each buoy's location, since NDBC's raw feeds block browser access. Japan/Okinawa stations (■) are approximate NOWPHAS/JMA positions. Live data needs an https connection; markers still plot offline. Map © OpenStreetMap, CARTO.
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const C={teal:'#2DD4BF',blue:'#3B82F6',amber:'#F59E0B',orange:'#FB8102',red:'#EF4444',dim:'#475569'};
+/* ===== i18n — LANG fixed per file (en here; ja in the .ja.html copy) ===== */
+const LANG='es';
+const T={
+  navHome:{en:'⌂ Home',ja:'⌂ ホーム'},navDash:{en:'🛰 Dashboard',ja:'🛰 ダッシュボード'},navMap:{en:'🌋 Ring of Fire Map',ja:'🌋 環太平洋火山帯マップ'},navBuoy:{en:'🛟 Buoy Map',ja:'🛟 ブイマップ'},
+  title:{en:'Coastal Buoy Map',ja:'沿岸ブイマップ'},
+  sub:{en:'Pacific buoy network · live significant wave height per station',ja:'太平洋ブイ網 ・ 観測点ごとの有義波高（ライブ）'},
+  refreshWaves:{en:'Refresh waves',ja:'波浪を更新'},
+  legHdr:{en:'Sig. wave H',ja:'有義波高'},
+  legNoData:{en:'no data',ja:'データなし'},
+  legSource:{en:'● NDBC real · ■ NOWPHAS/JMA approx · click for live detail',ja:'● NDBC実測 ・ ■ NOWPHAS/JMA概略 ・ クリックで詳細'},
+  note:{en:'Wave height is a model value (Open-Meteo Marine) sampled at each buoy\u2019s location, since NDBC\u2019s raw feeds block browser access. Japan/Okinawa stations (■) are approximate NOWPHAS/JMA positions. Live data needs an https connection; markers still plot offline. Map © OpenStreetMap, CARTO.',ja:'波高はモデル値（Open-Meteo Marine）を各ブイ位置でサンプリングしたものです（NDBCの生フィードはブラウザからのアクセスを遮断するため）。日本・沖縄の観測点（■）はNOWPHAS/JMAの概略位置です。ライブデータにはhttps接続が必要ですが、オフラインでもマーカーは表示されます。地図 © OpenStreetMap, CARTO。'},
+  stampLoading:{en:'loading waves…',ja:'波浪取得中…'},
+  stampLive:{en:'{ok} buoys live{fail} · {t}',ja:'ブイ {ok} 点ライブ{fail} ・ {t}'},
+  stampFail:{en:' · {n} no data',ja:' ・ {n} データなし'},
+  stampOffline:{en:'no live wave data (offline?) — positions shown',ja:'波浪データなし（オフライン？）— 位置のみ表示'},
+  pSig:{en:'Sig. wave Hs',ja:'有義波高'},pPeriod:{en:'Wave period',ja:'波周期'},pDir:{en:'Wave dir',ja:'波向'},pSwell:{en:'Swell Hs',ja:'うねり高'},pSwellP:{en:'Swell period',ja:'うねり周期'},pSwellD:{en:'Swell dir',ja:'うねり向'},pWindWave:{en:'Wind-wave Hs',ja:'風波高'},
+  pNoData:{en:'No live wave data — needs an https connection',ja:'波浪データなし — https接続が必要'},
+  view_ov:{en:'N. Pacific overview',ja:'北太平洋 全体'},view_hi:{en:'Hawaiʻi',ja:'ハワイ'},view_sc:{en:'S. California',ja:'南カリフォルニア'},view_jp:{en:'Japan · Okinawa',ja:'日本 ・ 沖縄'},view_gu:{en:'Guam · Marianas',ja:'グアム ・ マリアナ'},
+};
+function t(k,v){ let s=(T[k]&&(T[k][LANG]||T[k].en))||k; if(v) for(const x in v) s=s.replace('{'+x+'}',v[x]); return s; }
+const ES={
+  navHome:'⌂ Inicio',navDash:'🛰 Panel',navMap:'🌋 Mapa del Cinturón de Fuego',navBuoy:'🛟 Mapa de boyas',
+  title:'Mapa de Boyas Costeras',
+  sub:'Red de boyas del Pacífico · altura significativa de ola en vivo por estación',
+  refreshWaves:'Actualizar olas',
+  legHdr:'Altura sign. ola',legNoData:'sin datos',
+  legSource:'● NDBC real · ■ NOWPHAS/JMA aprox · clic para detalle en vivo',
+  note:'La altura de ola es un valor de modelo (Open-Meteo Marine) muestreado en la ubicación de cada boya, ya que los datos crudos de NDBC bloquean el acceso del navegador. Las estaciones de Japón/Okinawa (■) son posiciones aproximadas NOWPHAS/JMA. Los datos en vivo requieren conexión https; las marcas se muestran igual sin conexión. Mapa © OpenStreetMap, CARTO.',
+  stampLoading:'cargando olas…',stampLive:'{ok} boyas en vivo{fail} · {t}',stampFail:' · {n} sin datos',
+  stampOffline:'sin datos de olas en vivo (¿sin conexión?) — se muestran posiciones',
+  pSig:'Altura sign. ola',pPeriod:'Período de ola',pDir:'Dirección de ola',pSwell:'Altura marejada',pSwellP:'Período marejada',pSwellD:'Dirección marejada',pWindWave:'Altura ola de viento',
+  pNoData:'Sin datos de olas en vivo — requiere conexión https',
+  view_ov:'Pacífico Norte (general)',view_hi:'Hawái',view_sc:'Sur de California',view_jp:'Japón · Okinawa',view_gu:'Guam · Marianas',
+};
+Object.keys(ES).forEach(k=>{ if(T[k]) T[k].es=ES[k]; else T[k]={en:ES[k],ja:ES[k],es:ES[k]}; });
+function applyChrome(){ document.documentElement.lang=LANG; document.querySelectorAll('[data-i18n]').forEach(el=>{ el.innerHTML=t(el.dataset.i18n); }); }
+const stamp=document.getElementById('stamp'), btn=document.getElementById('refreshBtn');
+async function getJSON(url,ms=12000){const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),ms);let r;try{r=await fetch(url,{signal:ctrl.signal});}catch(e){clearTimeout(timer);throw new Error(e&&e.name==='AbortError'?'timeout':'network/CORS blocked');}clearTimeout(timer);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
+const PL=lo=>lo>20?lo-360:lo;  // Pacific-continuous longitude frame
+
+const BUOYS=[
+  {id:'51201',nm:'Waimea Bay, Oʻahu',la:21.671,lo:-158.118,rg:'hi'},{id:'51202',nm:'Mokapu Pt, Oʻahu',la:21.414,lo:-157.681,rg:'hi'},
+  {id:'51205',nm:'Pauwela, Maui',la:21.018,lo:-156.421,rg:'hi'},{id:'51206',nm:'Hilo, Hawaiʻi',la:19.779,lo:-154.970,rg:'hi'},
+  {id:'51207',nm:'Kaneohe Bay',la:21.477,lo:-157.752,rg:'hi'},{id:'51208',nm:'Hanalei, Kauaʻi',la:22.285,lo:-159.574,rg:'hi'},
+  {id:'51211',nm:'Pearl Harbor Ent.',la:21.297,lo:-157.959,rg:'hi'},{id:'51212',nm:'Barbers Pt',la:21.323,lo:-158.149,rg:'hi'},
+  {id:'51213',nm:'Lānaʻi SW',la:20.750,lo:-157.002,rg:'hi'},{id:'51101',nm:'NW Hawaii',la:24.359,lo:-162.081,rg:'hi'},
+  {id:'51002',nm:'SW Hawaii',la:17.043,lo:-157.696,rg:'hi'},{id:'51003',nm:'W Hawaii',la:19.196,lo:-160.639,rg:'hi'},
+  {id:'51004',nm:'SE Hawaii',la:17.604,lo:-152.364,rg:'hi'},
+  {id:'46086',nm:'San Clemente Basin',la:32.499,lo:-118.052,rg:'sc'},{id:'46232',nm:'Point Loma S',la:32.517,lo:-117.425,rg:'sc'},
+  {id:'46225',nm:'Torrey Pines Outer',la:32.933,lo:-117.391,rg:'sc'},{id:'46254',nm:'Scripps Nearshore',la:32.868,lo:-117.267,rg:'sc'},
+  {id:'46224',nm:'Oceanside',la:33.178,lo:-117.472,rg:'sc'},{id:'46258',nm:'Mission Bay W',la:32.749,lo:-117.502,rg:'sc'},
+  {id:'46266',nm:'Del Mar',la:32.957,lo:-117.279,rg:'sc'},{id:'46222',nm:'San Pedro',la:33.618,lo:-118.317,rg:'sc'},
+  {id:'46221',nm:'Santa Monica Bay',la:33.860,lo:-118.641,rg:'sc'},{id:'46253',nm:'San Pedro S',la:33.576,lo:-118.181,rg:'sc'},
+  {id:'46219',nm:'San Nicolas Is',la:33.226,lo:-119.891,rg:'sc'},{id:'46047',nm:'Tanner Bank',la:32.403,lo:-119.524,rg:'sc'},
+  {id:'46218',nm:'Harvest / Pt Conception',la:34.452,lo:-120.780,rg:'sc'},{id:'46011',nm:'Santa Maria',la:34.956,lo:-120.992,rg:'sc'},
+  {id:'52200',nm:'Guam (Apra)',la:13.354,lo:144.788,rg:'gu'},{id:'52202',nm:'Ipan, Guam',la:13.729,lo:144.789,rg:'gu'},
+  {id:'52211',nm:'Saipan',la:15.270,lo:145.662,rg:'gu'},{id:'52201',nm:'Kwajalein',la:8.740,lo:167.740,rg:'gu'},
+  {id:'~HKT',nm:'Hakata Port 博多港',la:33.62,lo:130.30,rg:'jp',ap:1},{id:'~NGS',nm:'Nagasaki',la:32.70,lo:129.75,rg:'jp',ap:1},
+  {id:'~ABR',nm:'Aburatsu, Miyazaki',la:31.58,lo:131.42,rg:'jp',ap:1},{id:'~SBK',nm:'Saiki, Ōita',la:32.95,lo:132.05,rg:'jp',ap:1},
+  {id:'~TKY',nm:'Tokyo Bay 東京湾',la:35.30,lo:139.80,rg:'jp',ap:1},{id:'~HND',nm:'Haneda · Tama-gawa mouth 羽田',la:35.53,lo:139.80,rg:'jp',ap:1},
+  {id:'~OTA',nm:'Tokyo Bay · Ōi/Ōta 大田',la:35.55,lo:139.86,rg:'jp',ap:1},{id:'~KSM',nm:'Kashima',la:35.90,lo:140.80,rg:'jp',ap:1},
+  {id:'~OMZ',nm:'Omaezaki',la:34.50,lo:138.22,rg:'jp',ap:1},{id:'~SNR',nm:'Sanriku GPS',la:38.20,lo:141.70,rg:'jp',ap:1},
+  {id:'~NAH',nm:'Naha, Okinawa',la:26.20,lo:127.65,rg:'jp',ap:1},{id:'~ISG',nm:'Ishigaki',la:24.35,lo:124.18,rg:'jp',ap:1},
+];
+
+// view -> map bounds (lat, PL(lon))
+const VIEWS={
+  ov:{name:'N. Pacific overview', b:[[3,-244],[40,-110]]},
+  hi:{name:'Hawaiʻi',             b:[[16.5,-163],[25,-152]]},
+  sc:{name:'S. California',       b:[[31.6,-121.6],[35.4,-116.8]]},
+  jp:{name:'Japan · Okinawa',     b:[[23,-237],[39.5,-217]]},
+  gu:{name:'Guam · Marianas',     b:[[7,-217],[17,-191]]},
+};
+
+const WAVES={};
+let CUR='ov';
+const waveColor=h=>h==null?C.dim:h<1?C.teal:h<2?C.blue:h<3?C.amber:h<4?C.orange:C.red;
+const COMPASS=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const compass=d=>d==null?'':COMPASS[Math.round(d/22.5)%16];
+
+function buoyInfoHTML(b){
+  const w=WAVES[b.id], rows=[];
+  if(w&&w.h!=null){
+    rows.push(`<div class="brw"><span class="k">${t('pSig')}</span><span class="val bbig" style="color:${waveColor(w.h)}">${w.h.toFixed(1)} m</span></div>`);
+    if(w.p!=null)  rows.push(`<div class="brw"><span class="k">${t('pPeriod')}</span><span class="val">${w.p.toFixed(0)} s</span></div>`);
+    if(w.dir!=null)rows.push(`<div class="brw"><span class="k">${t('pDir')}</span><span class="val">${w.dir.toFixed(0)}° ${compass(w.dir)}</span></div>`);
+    if(w.s!=null)  rows.push(`<div class="brw"><span class="k">${t('pSwell')}</span><span class="val">${w.s.toFixed(1)} m</span></div>`);
+    if(w.sp!=null) rows.push(`<div class="brw"><span class="k">${t('pSwellP')}</span><span class="val">${w.sp.toFixed(0)} s</span></div>`);
+    if(w.sd!=null) rows.push(`<div class="brw"><span class="k">${t('pSwellD')}</span><span class="val">${w.sd.toFixed(0)}° ${compass(w.sd)}</span></div>`);
+    if(w.ww!=null) rows.push(`<div class="brw"><span class="k">${t('pWindWave')}</span><span class="val">${w.ww.toFixed(1)} m</span></div>`);
+  } else {
+    rows.push(`<div class="brw"><span class="k" style="color:#6B7280">${t('pNoData')}</span></div>`);
+  }
+  return `<div class="bnm">${b.ap?'■':'●'} ${b.id}</div>`+
+    `<div class="bco">${b.nm} · ${b.la.toFixed(3)}, ${b.lo.toFixed(3)}${b.ap?' · approx (NOWPHAS/JMA)':''}</div>`+
+    rows.join('')+
+    `<div class="bsrc">Open-Meteo Marine model · sampled at station coordinates · ${w?('updated '+new Date().toLocaleTimeString([],{hour12:false})):'awaiting data'}</div>`;
+}
+
+let map, layer;
+function initMap(){
+  map=L.map('map',{minZoom:2,maxZoom:11,worldCopyJump:false}).setView([21.46,-157.97],3);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    subdomains:'abcd',maxZoom:19,
+    attribution:'&copy; OpenStreetMap &copy; CARTO · waves Open-Meteo · buoys NDBC/NOWPHAS'
+  }).addTo(map);
+  layer=L.layerGroup().addTo(map);
+  setTimeout(()=>map.invalidateSize(),250);   // iOS Safari: recompute size or tiles stay blank
+  window.addEventListener('resize',()=>map.invalidateSize());
+  window.addEventListener('orientationchange',()=>setTimeout(()=>map.invalidateSize(),300));
+}
+function renderMarkers(){
+  layer.clearLayers();
+  BUOYS.forEach(b=>{
+    const w=WAVES[b.id], col=waveColor(w?w.h:null);
+    const r=w&&w.h!=null?Math.min(11,5+w.h*1.1):5;
+    const ll=[b.la,PL(b.lo)];
+    let m;
+    if(b.ap){
+      const sz=Math.round(r*1.7);
+      m=L.marker(ll,{icon:L.divIcon({className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],
+        html:`<div style="width:${sz}px;height:${sz}px;background:${col};opacity:.7;border:1.5px solid #fff;box-sizing:border-box"></div>`})});
+    } else {
+      m=L.circleMarker(ll,{radius:r,color:col,weight:1.5,opacity:.95,fillColor:col,fillOpacity:.45});
+    }
+    m.bindPopup(buoyInfoHTML(b),{maxWidth:260});
+    m.bindTooltip(`${b.ap?'■':'●'} ${b.id}${w&&w.h!=null?' · '+w.h.toFixed(1)+'m':''}`,{direction:'top',opacity:.9});
+    m.addTo(layer);
+  });
+}
+function flyTo(key){
+  CUR=key;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.k===key));
+  const v=VIEWS[key]; if(v&&v.b) map.fitBounds(v.b,{padding:[20,20]});
+}
+
+async function fetchWaves(){
+  btn.classList.add('busy'); stamp.textContent=t('stampLoading');
+  const regions=['hi','sc','gu','jp']; let ok=0,fail=0;
+  try{
+    await Promise.all(regions.map(async rg=>{
+      const list=BUOYS.filter(b=>b.rg===rg); if(!list.length)return;
+      try{
+        const lats=list.map(b=>b.la).join(','), lons=list.map(b=>b.lo).join(',');
+        const d=await getJSON(`https://marine-api.open-meteo.com/v1/marine?latitude=${lats}&longitude=${lons}&current=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,wind_wave_height&timezone=auto`);
+        const arr=Array.isArray(d)?d:[d];
+        list.forEach((b,i)=>{const c=arr[i]&&arr[i].current; if(c){WAVES[b.id]={h:c.wave_height,p:c.wave_period,dir:c.wave_direction,s:c.swell_wave_height,sp:c.swell_wave_period,sd:c.swell_wave_direction,ww:c.wind_wave_height};ok++;}});
+      }catch(e){ fail+=list.length; }
+    }));
+    renderMarkers();
+    stamp.textContent = ok? t('stampLive',{ok:ok,fail:fail?t('stampFail',{n:fail}):'',t:new Date().toLocaleTimeString([],{hour12:false})}) : t('stampOffline');
+  }catch(e){
+    stamp.textContent='wave load error — positions shown';
+  }finally{
+    btn.classList.remove('busy');   // always return to green
+  }
+}
+
+// init
+applyChrome();
+initMap();
+document.getElementById('tabs').innerHTML=Object.entries(VIEWS).map(([k,v])=>`<div class="tab" data-k="${k}">${t('view_'+k)}</div>`).join('');
+document.querySelectorAll('.tab').forEach(tabEl=>tabEl.addEventListener('click',()=>flyTo(tabEl.dataset.k)));
+btn.addEventListener('click',fetchWaves);
+renderMarkers();
+flyTo('ov');
+fetchWaves();
+</script>
+</body>
+</html>

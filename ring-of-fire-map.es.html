@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cinturón de Fuego del Pacífico · Mapa de Riesgos</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Saira:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0F19;--panel:#141B2D;--border:#1F2937;--text:#E5E9F0;--muted:#6B7280;--dim:#475569;
+    --orange:#FB8102;--blue:#3B82F6;--green:#22C55E;--amber:#F59E0B;--red:#EF4444;--purple:#A855F7;--teal:#2DD4BF;
+    --mono:'DM Mono',ui-monospace,monospace;--disp:'Saira',system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--bg);color:var(--text);font-family:var(--disp);display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+  header{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-wrap:wrap;z-index:1000;}
+  .mark{width:11px;height:28px;background:var(--orange);box-shadow:15px 0 0 var(--red);margin-right:15px;flex:none;}
+  h1{font-weight:800;font-size:19px;letter-spacing:.02em;text-transform:uppercase;line-height:1;}
+  h1 .s{display:block;font-family:var(--mono);font-size:9.5px;font-weight:400;letter-spacing:.2em;color:var(--muted);margin-top:6px;}
+  #status{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--muted);}
+  button.rf{font-family:var(--mono);font-size:11px;letter-spacing:.06em;background:transparent;color:var(--text);
+    border:1px solid var(--border);padding:8px 13px;cursor:pointer;text-transform:uppercase;}
+  button.rf:hover{border-color:var(--orange);color:var(--orange);}
+  .nav{display:flex;gap:4px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;}
+  .nav a{color:var(--muted);text-decoration:none;padding:6px 11px;border:1px solid var(--border);letter-spacing:.04em;transition:.15s;}
+  .nav a:hover{color:#fff;border-color:var(--muted);}
+  .nav a.on{color:var(--bg);background:var(--orange);border-color:var(--orange);font-weight:600;}
+  .langlinks{display:inline-flex;gap:4px;margin-left:6px;}
+  .langlinks a{color:var(--muted);text-decoration:none;padding:4px 9px;border:1px solid var(--border);}
+  .langlinks a:hover{color:var(--text);border-color:var(--muted);}
+  .langlinks a.on{color:var(--teal);border-color:var(--teal);font-weight:600;}
+  #wrap{flex:1 1 auto;position:relative;min-height:72vh;}
+  #map{position:absolute;inset:0;background:#0A0E17;}
+  .nolf{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:30px;text-align:center;
+    font-family:var(--mono);font-size:13px;color:var(--muted);line-height:1.7;}
+
+  /* honest framing banner */
+  .frame{position:absolute;top:12px;left:12px;z-index:600;max-width:330px;background:rgba(11,15,25,.985);
+    border:1px solid var(--border);border-left:3px solid var(--orange);padding:11px 13px;font-size:11.5px;color:#B8C0CE;line-height:1.5;}
+  .frame b{color:var(--orange);font-weight:600}
+  .frame .m{font-family:var(--mono);font-size:10px;color:var(--muted);display:block;margin-top:6px;}
+  .frame .x{float:right;cursor:pointer;color:var(--dim);font-family:var(--mono);margin-left:8px;}
+
+  /* Jアラート-class tsunami banner */
+  .jalert{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:650;
+    font-family:var(--mono);font-size:11.5px;padding:7px 15px;border:1px solid var(--border);
+    background:rgba(11,15,25,.985);color:var(--muted);max-width:min(640px,70%);text-align:center;line-height:1.5;}
+  .jalert b{color:var(--orange);font-weight:600;}
+  .jalert.watch{border-color:var(--amber);color:#fff;background:rgba(40,28,4,.96);}
+  .jalert.watch b{color:var(--amber);}
+  .jalert.active{border-color:var(--red);color:#fff;background:rgba(42,8,8,.96);animation:jpulse 1.4s ease-in-out infinite;}
+  .jalert.active b{color:#fff;}
+  @keyframes jpulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}50%{box-shadow:0 0 0 8px rgba(239,68,68,0)}}
+  @media(max-width:620px){.jalert{max-width:88%;font-size:10.5px;top:8px;}}
+
+  /* legend */
+  .legend{position:absolute;bottom:14px;left:12px;z-index:600;background:rgba(11,15,25,.985);border:1px solid var(--border);
+    padding:11px 13px;font-family:var(--mono);font-size:10.5px;color:#C7CEDB;line-height:1.7;}
+  .legend h4{font-size:9px;letter-spacing:.18em;color:var(--muted);margin-bottom:7px;text-transform:uppercase;}
+  .legend .row{display:flex;align-items:center;gap:8px;}
+  .legend .sw{width:11px;height:11px;border-radius:50%;flex:none;}
+  .legend .tri{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;}
+
+  /* collapsible panels (frame + legend) */
+  .ptoggle{cursor:pointer;font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--muted);display:flex;align-items:center;gap:7px;user-select:none;-webkit-user-select:none;}
+  .ptoggle .cev{color:var(--orange);transition:transform .2s;display:inline-block;}
+  .frame:not(.collapsed) .ptoggle .cev,.legend:not(.collapsed) .ptoggle .cev{transform:rotate(90deg);}
+  .frame.collapsed .pbody,.legend.collapsed .pbody{display:none;}
+  .frame .pbody{margin-top:8px;}
+  .legend .pbody{margin-top:9px;}
+
+  /* mobile: shrink overlays so the map is visible */
+  @media(max-width:620px){
+    header{padding:8px 11px;gap:6px 10px;}
+    .mark{height:17px;margin-right:8px;box-shadow:11px 0 0 var(--red);}
+    h1{font-size:13px;} h1 .s{display:none;}
+    #status{font-size:9px;margin-left:auto;}
+    button.rf{padding:5px 8px;font-size:9.5px;}
+    .nav{font-size:9.5px;width:100%;order:5;gap:3px;}
+    .nav a{padding:5px 8px;}
+    .frame{max-width:60%;font-size:9px;padding:7px 9px;line-height:1.4;top:46px;left:8px;}
+    .frame .m{font-size:8px;margin-top:4px;}
+    .jalert{top:8px;font-size:10px;padding:6px 11px;}
+    .legend{font-size:8.5px;padding:7px 9px;bottom:8px;left:8px;line-height:1.45;}
+    .legend h4{font-size:7.5px;margin-bottom:4px;}
+    .legend .sw{width:9px;height:9px;}
+    .leaflet-control-layers-expanded{padding:8px 10px;font-size:11px;}
+  }
+
+  /* leaflet dark theming */
+  .leaflet-container{background:#0A0E17;font-family:var(--mono);}
+  .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel);color:var(--text);border:1px solid var(--border);box-shadow:none;border-radius:0;}
+  .leaflet-popup-content{font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:11px 13px;}
+  .leaflet-popup-content b{font-family:var(--disp);font-size:13px;}
+  .leaflet-popup-content a{color:var(--blue);}
+  .leaflet-control-layers{background:rgba(11,15,25,.985);color:var(--text);border:1px solid var(--border);border-radius:0;font-family:var(--mono);font-size:12px;}
+  .leaflet-control-layers-expanded{padding:11px 13px;}
+  .lyr-hdr{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.06em;cursor:pointer;
+    display:flex;justify-content:space-between;align-items:center;gap:16px;padding:1px 1px 8px;
+    border-bottom:1px solid var(--border);margin-bottom:8px;user-select:none;}
+  .lyr-hdr:hover{color:var(--text);}
+  .lyr-hdr .cev{color:var(--orange);font-size:10px;}
+  .leaflet-control-layers.lyr-min{padding-bottom:9px;}
+  .leaflet-control-layers.lyr-min .leaflet-control-layers-list{display:none;}
+  .leaflet-control-layers.lyr-min .lyr-hdr{border-bottom:none;margin-bottom:0;padding-bottom:1px;}
+  .leaflet-control-layers label{margin:5px 0;display:flex;align-items:center;gap:7px;}
+  .leaflet-control-zoom a{background:var(--panel);color:var(--text);border:1px solid var(--border);}
+  .leaflet-control-attribution{background:rgba(11,15,25,.8);color:var(--dim);font-size:9px;}
+  .leaflet-control-attribution a{color:var(--muted);}
+  .vlabel{font-family:var(--mono);font-size:9px;color:#fff;text-shadow:0 0 3px #000,0 0 3px #000;white-space:nowrap;}
+  .glabel{font-family:var(--mono);font-size:9px;color:#6c9ee0;text-shadow:0 0 3px #000,0 0 3px #000;white-space:nowrap;}
+</style>
+</head>
+<body>
+<header>
+  <div class="mark"></div>
+  <div><h1><span data-i18n="title">Pacific Ring of Fire · Hazard Map</span><span class="s" data-i18n="sub">Volcanoes · Live Seismicity · Buoys · Aircraft — geophysical track, parallel to weather</span></h1></div>
+  <nav class="nav">
+    <a href="index.html#es" data-i18n="navHome">⌂ Home</a>
+    <a href="pacific-hazard.es.html" data-i18n="navDash">🛰 Dashboard</a>
+    <a href="ring-of-fire-map.es.html" class="on" data-i18n="navMap">🌋 Map</a>
+    <a href="coastal-chart-plot.es.html" data-i18n="navBuoy">🛟 Buoy Map</a>
+    <span class="langlinks"><a href="ring-of-fire-map.html">EN</a><a href="ring-of-fire-map.ja.html" lang="ja">日本語</a><a href="ring-of-fire-map.es.html" class="on" lang="es">Español</a></span>
+  </nav>
+  <span id="status" data-i18n="stInit">initializing…</span>
+  <button class="rf" id="refreshBtn" data-i18n="refresh">Refresh</button>
+</header>
+<div id="wrap">
+  <div id="map"></div>
+  <div class="jalert" id="jalert" data-i18n="jalertInit">🌊 <b>Jアラート級 津波</b> — 取得中… <span style="color:var(--dim)">(JMA防災 / P2P)</span></div>
+  <div class="frame collapsed" id="frame">
+    <div class="ptoggle" onclick="togglePanel('frame')"><span data-i18n="frameTog">ℹ︎ Framing</span> <span class="cev">▸</span></div>
+    <div class="pbody">
+      <span data-i18n="frameBody"></span>
+      <span class="m" data-i18n="frameSub"></span>
+    </div>
+  </div>
+  <div class="legend collapsed" id="legend">
+    <div class="ptoggle" onclick="togglePanel('legend')"><span data-i18n="legendTog">Legend</span> <span class="cev">▸</span></div>
+    <div class="pbody">
+      <div class="row"><span class="tri" style="border-bottom:11px solid var(--orange)"></span> <span data-i18n="legActive">active volcano</span></div>
+      <div class="row"><span class="tri" style="border-bottom:11px solid var(--purple)"></span> <span data-i18n="legHotspot">hotspot volcano (Hawaii)</span></div>
+      <div class="row"><span class="tri" style="border-bottom:11px solid var(--red)"></span> <span data-i18n="legElevated">elevated / erupting (live)</span></div>
+      <div class="row"><span class="sw" style="background:var(--red)"></span> <span data-i18n="legQs">quake &lt;70 km (shallow)</span></div>
+      <div class="row"><span class="sw" style="background:var(--amber)"></span> <span data-i18n="legQm">quake 70–300 km</span></div>
+      <div class="row"><span class="sw" style="background:var(--blue)"></span> <span data-i18n="legQd">quake &gt;300 km (deep)</span></div>
+      <div class="row" style="color:var(--muted)" data-i18n="legNote">○ size ∝ magnitude · ◎ tsunami flag · ▪ JMA 防災 (Japan)</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const C={orange:'#FB8102',blue:'#3B82F6',green:'#22C55E',amber:'#F59E0B',red:'#EF4444',purple:'#A855F7',teal:'#2DD4BF',dim:'#475569'};
+/* ===== i18n — LANG fixed per file (en here; ja in the .ja.html copy) ===== */
+const LANG='es';
+const T={
+  navHome:{en:'⌂ Home',ja:'⌂ ホーム'},navDash:{en:'🛰 Dashboard',ja:'🛰 ダッシュボード'},navMap:{en:'🌋 Map',ja:'🌋 マップ'},navBuoy:{en:'🛟 Buoy Map',ja:'🛟 ブイマップ'},
+  title:{en:'Pacific Ring of Fire · Hazard Map',ja:'環太平洋火山帯 ・ ハザードマップ'},
+  sub:{en:'Volcanoes · Live Seismicity · Buoys · Aircraft — geophysical track, parallel to weather',ja:'火山 ・ ライブ地震活動 ・ ブイ ・ 航空機 — 気象と並行する地球物理の系列'},
+  refresh:{en:'Refresh',ja:'更新'},
+  frameTog:{en:'ℹ︎ Framing',ja:'ℹ︎ 解説'},
+  frameBody:{en:'<b>Geophysical, not weather.</b> Volcanoes &amp; earthquakes don\u2019t forecast storms — but a large undersea quake <b>is</b> a real tsunami precursor. This is the Earth · Fire hazard layer.',ja:'<b>気象ではなく地球物理です。</b>火山や地震は嵐を予報しません — ただし海底の大地震は本物の津波の前兆<b>です</b>。これは「地・火」のハザードレイヤーです。'},
+  frameSub:{en:'Hawaii volcanoes are a hotspot (purple), not Ring-of-Fire subduction. Ring outline is schematic. Buoys ◇ approx (NOWPHAS/JMA). Oil platforms (🛢) are exposure — assets a hazard can threaten, not a cause. Santa Barbara\u2019s seep is natural geology, not drilling.',ja:'ハワイの火山はホットスポット（紫）で、環太平洋の沈み込み帯ではありません。火山帯の輪郭は模式的です。ブイ ◇ は概略位置（NOWPHAS/JMA）。石油プラットフォーム（🛢）は曝露対象 — ハザードが脅かす資産であって原因ではありません。サンタバーバラの湧出は自然地質で、掘削によるものではありません。'},
+  legendTog:{en:'Legend',ja:'凡例'},
+  legActive:{en:'active volcano',ja:'活火山'},legHotspot:{en:'hotspot volcano (Hawaii)',ja:'ホットスポット火山（ハワイ）'},legElevated:{en:'elevated / erupting (live)',ja:'警戒レベル上昇／噴火中（ライブ）'},
+  legQs:{en:'quake &lt;70 km (shallow)',ja:'地震 深さ&lt;70 km（浅い）'},legQm:{en:'quake 70–300 km',ja:'地震 70–300 km'},legQd:{en:'quake &gt;300 km (deep)',ja:'地震 深さ&gt;300 km（深い）'},
+  legNote:{en:'○ size ∝ magnitude · ◎ tsunami flag · ▪ JMA 防災 (Japan)',ja:'○ 大きさ ∝ マグニチュード ・ ◎ 津波フラグ ・ ▪ 気象庁 防災（日本）'},
+  jalertInit:{en:'🌊 <b>Jアラート級 津波</b> — 取得中… <span style="color:var(--dim)">(JMA防災 / P2P)</span>',ja:'🌊 <b>Jアラート級 津波</b> — 取得中… <span style="color:var(--dim)">(JMA防災 / P2P)</span>'},
+  jalertOff:{en:'🌊 <b>Jアラート級 津波</b>: feed offline <span style="color:var(--dim)">(needs https)</span>',ja:'🌊 <b>Jアラート級 津波</b>：取得不可 <span style="color:var(--dim)">(https が必要)</span>'},
+  jalertNone:{en:'🌊 <b>Jアラート級 津波</b>: 現在発表なし · no active tsunami warning <span style="color:var(--dim)">(JMA防災/P2P)</span>',ja:'🌊 <b>Jアラート級 津波</b>：現在発表なし <span style="color:var(--dim)">(JMA防災/P2P)</span>'},
+  stInit:{en:'initializing…',ja:'初期化中…'},stOffline:{en:'offline',ja:'オフライン'},stLoading:{en:'loading…',ja:'読み込み中…'},
+  stCounts:{en:'{v} volcanoes · {q} USGS quakes · {j} JMA quakes · {t}',ja:'火山 {v} ・ USGS地震 {q} ・ JMA地震 {j} ・ {t}'},
+  stAircraft:{en:'{n} aircraft within {r} nm of center · {t}',ja:'中心から {r} nm 以内に航空機 {n} 機 ・ {t}'},
+  stAircraftErr:{en:'aircraft feed: {e} — host over https',ja:'航空機フィード：{e} — https でのホストが必要'},
+  nolf:{en:'Map library (Leaflet) could not load — you appear to be offline or in a sandbox that blocks the CDN.<br>Download this file and open it in a normal browser, or host it over https://.',ja:'地図ライブラリ（Leaflet）を読み込めませんでした — オフライン、またはCDNを遮断する環境のようです。<br>このファイルをダウンロードして通常のブラウザで開くか、https:// でホストしてください。'},
+  lyGrid:{en:'▦ Lat/Lon grid',ja:'▦ 緯度経度グリッド'},lyIDL:{en:'🕒 Int’l Date Line',ja:'🕒 日付変更線'},lyVolc:{en:'🌋 Active volcanoes',ja:'🌋 活火山'},lyQuake:{en:'◉ Seismicity (USGS live)',ja:'◉ 地震活動（USGSライブ）'},lyJpq:{en:'🗾 Japan quakes (JMA 防災)',ja:'🗾 日本の地震（JMA防災）'},lyRof:{en:'➰ Ring of Fire (schematic)',ja:'➰ 環太平洋火山帯（模式）'},lyBuoy:{en:'🛟 Buoy network',ja:'🛟 ブイ網'},lyPlat:{en:'🛢 Offshore platforms (exposure)',ja:'🛢 洋上プラットフォーム（曝露）'},lyCity:{en:'📍 Focus cities',ja:'📍 注目都市'},lyPlane:{en:'✈ Aircraft (live ADS-B · airplanes.live)',ja:'✈ 航空機（ライブADS-B ・ airplanes.live）'},
+  lyrHdr:{en:'🗂 Map layers',ja:'🗂 地図レイヤー'},
+};
+function t(k,v){ let s=(T[k]&&(T[k][LANG]||T[k].en))||k; if(v) for(const x in v) s=s.replace('{'+x+'}',v[x]); return s; }
+const ES={
+  navHome:'⌂ Inicio',navDash:'🛰 Panel',navMap:'🌋 Mapa',navBuoy:'🛟 Mapa de boyas',
+  title:'Cinturón de Fuego del Pacífico · Mapa de Riesgos',
+  sub:'Volcanes · Sismicidad en vivo · Boyas · Aeronaves — vía geofísica, paralela al clima',
+  refresh:'Actualizar',
+  frameTog:'ℹ︎ Explicación',
+  frameBody:'<b>Geofísico, no meteorológico.</b> Los volcanes y terremotos no pronostican tormentas — pero un gran sismo submarino <b>sí</b> es un precursor real de tsunami. Esta es la capa de peligros Tierra · Fuego.',
+  frameSub:'Los volcanes de Hawái son un punto caliente (morado), no subducción del Cinturón de Fuego. El contorno del cinturón es esquemático. Boyas ◇ aprox. (NOWPHAS/JMA). Las plataformas petroleras (🛢) son exposición — bienes que un peligro puede amenazar, no una causa. La filtración de Santa Bárbara es geología natural, no perforación.',
+  legendTog:'Leyenda',
+  legActive:'volcán activo',legHotspot:'volcán de punto caliente (Hawái)',legElevated:'nivel elevado / en erupción (en vivo)',
+  legQs:'sismo &lt;70 km (superficial)',legQm:'sismo 70–300 km',legQd:'sismo &gt;300 km (profundo)',
+  legNote:'○ tamaño ∝ magnitud · ◎ alerta de tsunami · ▪ JMA 防災 (Japón)',
+  jalertInit:'🌊 <b>Tsunami (nivel J-Alert)</b> — cargando… <span style="color:var(--dim)">(JMA防災 / P2P)</span>',
+  jalertOff:'🌊 <b>Tsunami (nivel J-Alert)</b>: sin conexión <span style="color:var(--dim)">(requiere https)</span>',
+  jalertNone:'🌊 <b>Tsunami (nivel J-Alert)</b>: sin avisos vigentes <span style="color:var(--dim)">(JMA防災/P2P)</span>',
+  stInit:'inicializando…',stOffline:'sin conexión',stLoading:'cargando…',
+  stCounts:'{v} volcanes · {q} sismos USGS · {j} sismos JMA · {t}',
+  stAircraft:'{n} aeronaves a {r} nm del centro · {t}',
+  stAircraftErr:'datos de aeronaves: {e} — requiere https',
+  nolf:'No se pudo cargar la biblioteca de mapas (Leaflet) — pareces estar sin conexión o en un entorno que bloquea el CDN.<br>Descarga este archivo y ábrelo en un navegador normal, o aloja sobre https://.',
+  lyGrid:'▦ Cuadrícula lat/lon',lyIDL:'🕒 Línea de cambio de fecha',lyVolc:'🌋 Volcanes activos',lyQuake:'◉ Sismicidad (USGS en vivo)',lyJpq:'🗾 Sismos de Japón (JMA 防災)',lyRof:'➰ Cinturón de Fuego (esquemático)',lyBuoy:'🛟 Red de boyas',lyPlat:'🛢 Plataformas marinas (exposición)',lyCity:'📍 Ciudades destacadas',lyPlane:'✈ Aeronaves (ADS-B en vivo · airplanes.live)',
+  lyrHdr:'🗂 Capas del mapa',
+};
+Object.keys(ES).forEach(k=>{ if(T[k]) T[k].es=ES[k]; else T[k]={en:ES[k],ja:ES[k],es:ES[k]}; });
+function applyChrome(){ document.documentElement.lang=LANG; document.querySelectorAll('[data-i18n]').forEach(el=>{ el.innerHTML=t(el.dataset.i18n); }); }
+applyChrome();
+// collapsible info panels — collapsed by default (mobile), auto-expanded on wider screens
+function togglePanel(id){var e=document.getElementById(id); if(e) e.classList.toggle('collapsed');}
+if(!window.matchMedia('(max-width:620px)').matches){
+  ['frame','legend'].forEach(id=>{var e=document.getElementById(id); if(e) e.classList.remove('collapsed');});
+}
+// Pacific-continuous longitude: shift western-Pacific (E) lons by -360 so the whole rim is one
+// unbroken span (~ -240 .. -66) centered on Hawaii. Stops the antimeridian streak across the USA.
+const PL=lo=>lo>20?lo-360:lo;
+const setStatus=s=>document.getElementById('status').textContent=s;
+async function getJSON(url, ms=12000){
+  const ctrl=new AbortController(); const timer=setTimeout(()=>ctrl.abort(), ms);
+  let r; try{ r=await fetch(url,{signal:ctrl.signal}); }catch(e){ clearTimeout(timer); throw new Error(e&&e.name==='AbortError'?'timeout':'network/CORS blocked'); }
+  clearTimeout(timer);
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+// ---------- VOLCANOES (static coords) ----------
+// {n:name, la, lo, r:region, h:hotspot?}
+const VOLC=[
+  // Kamchatka / Kuril
+  {n:'Shiveluch',la:56.653,lo:161.360,r:'Kamchatka'},{n:'Klyuchevskoy',la:56.057,lo:160.642,r:'Kamchatka'},
+  {n:'Bezymianny',la:55.972,lo:160.595,r:'Kamchatka'},{n:'Karymsky',la:54.049,lo:159.443,r:'Kamchatka'},
+  {n:'Ebeko',la:50.686,lo:156.014,r:'Kuril Is.'},
+  // Japan
+  {n:'Mt. Fuji 富士山',la:35.361,lo:138.728,r:'Honshu, Japan'},{n:'Sakurajima 桜島',la:31.585,lo:130.657,r:'Kyushu, Japan'},
+  {n:'Aso 阿蘇山',la:32.884,lo:131.104,r:'Kyushu, Japan'},{n:'Asama 浅間山',la:36.406,lo:138.523,r:'Honshu, Japan'},
+  {n:'Ontake 御嶽山',la:35.893,lo:137.480,r:'Honshu, Japan'},{n:'Kirishima 霧島',la:31.934,lo:130.862,r:'Kyushu, Japan'},
+  {n:'Unzen 雲仙岳',la:32.761,lo:130.299,r:'Kyushu, Japan'},{n:'Suwanosejima 諏訪之瀬島',la:29.638,lo:129.714,r:'Ryukyu, Japan'},
+  {n:'Nishinoshima 西之島',la:27.247,lo:140.874,r:'Ogasawara, Japan'},{n:'Usu 有珠山',la:42.541,lo:140.839,r:'Hokkaido, Japan'},
+  {n:'Tokachi 十勝岳',la:43.418,lo:142.686,r:'Hokkaido, Japan'},
+  // Mariana (Guam region)
+  {n:'Anatahan',la:16.350,lo:145.670,r:'Mariana Is.'},{n:'Pagan',la:18.130,lo:145.800,r:'Mariana Is.'},
+  // Philippines / Taiwan
+  {n:'Taal',la:14.002,lo:120.993,r:'Philippines'},{n:'Mayon',la:13.257,lo:123.685,r:'Philippines'},
+  {n:'Pinatubo',la:15.143,lo:120.349,r:'Philippines'},{n:'Kanlaon',la:10.412,lo:123.132,r:'Philippines'},
+  // Indonesia (Sunda arc)
+  {n:'Merapi',la:-7.540,lo:110.446,r:'Indonesia'},{n:'Anak Krakatau',la:-6.102,lo:105.423,r:'Indonesia'},
+  {n:'Semeru',la:-8.108,lo:112.920,r:'Indonesia'},{n:'Sinabung',la:3.170,lo:98.392,r:'Indonesia'},
+  {n:'Marapi',la:-0.381,lo:100.473,r:'Indonesia'},
+  // SW Pacific / NZ
+  {n:'Ruapehu',la:-39.281,lo:175.564,r:'New Zealand'},{n:'Whakaari / White Is.',la:-37.521,lo:177.182,r:'New Zealand'},
+  {n:'Yasur',la:-19.530,lo:169.442,r:'Vanuatu'},{n:'Rabaul (Tavurvur)',la:-4.271,lo:152.203,r:'PNG'},
+  {n:'Manam',la:-4.080,lo:145.037,r:'PNG'},
+  // Alaska / Aleutians
+  {n:'Shishaldin',la:54.756,lo:-163.970,r:'Alaska'},{n:'Pavlof',la:55.417,lo:-161.894,r:'Alaska'},
+  {n:'Cleveland',la:52.825,lo:-169.944,r:'Aleutians'},{n:'Great Sitkin',la:52.076,lo:-176.130,r:'Aleutians'},
+  {n:'Redoubt',la:60.485,lo:-152.742,r:'Alaska'},{n:'Mt. Spurr',la:61.299,lo:-152.251,r:'Alaska'},
+  // Cascades
+  {n:'Mt. St. Helens',la:46.200,lo:-122.180,r:'Cascades, USA'},{n:'Mt. Rainier',la:46.853,lo:-121.760,r:'Cascades, USA'},
+  {n:'Mt. Hood',la:45.374,lo:-121.696,r:'Cascades, USA'},{n:'Mt. Shasta',la:41.409,lo:-122.193,r:'Cascades, USA'},
+  {n:'Lassen Peak',la:40.492,lo:-121.508,r:'Cascades, USA'},
+  // Hawaii (HOTSPOT)
+  {n:'Kīlauea',la:19.421,lo:-155.287,r:'Hawaiʻi (hotspot)',h:1},{n:'Mauna Loa',la:19.475,lo:-155.608,r:'Hawaiʻi (hotspot)',h:1},
+  // Mexico / Central America
+  {n:'Popocatépetl',la:19.023,lo:-98.622,r:'Mexico'},{n:'Colima',la:19.514,lo:-103.620,r:'Mexico'},
+  {n:'Fuego',la:14.473,lo:-90.880,r:'Guatemala'},{n:'Pacaya',la:14.382,lo:-90.601,r:'Guatemala'},
+  {n:'Masaya',la:11.984,lo:-86.161,r:'Nicaragua'},{n:'Arenal',la:10.463,lo:-84.703,r:'Costa Rica'},
+  // Andes
+  {n:'Sangay',la:-2.005,lo:-78.341,r:'Ecuador'},{n:'Cotopaxi',la:-0.677,lo:-78.436,r:'Ecuador'},
+  {n:'Reventador',la:-0.078,lo:-77.656,r:'Ecuador'},{n:'Ubinas',la:-16.355,lo:-70.903,r:'Peru'},
+  {n:'Villarrica',la:-39.420,lo:-71.930,r:'Chile'},{n:'Láscar',la:-23.370,lo:-67.730,r:'Chile'},
+];
+
+// ---------- BUOYS ----------
+// NDBC real coords (Hawaii, SoCal, Guam/Marianas); Japan/Okinawa = NOWPHAS/JMA approx
+const BUOYS=[
+  // Hawaii (NDBC)
+  ['51201','Waimea Bay, Oʻahu',21.671,-158.118],['51202','Mokapu Pt, Oʻahu',21.414,-157.681],
+  ['51205','Pauwela, Maui',21.018,-156.421],['51206','Hilo, Hawaiʻi',19.779,-154.970],
+  ['51207','Kaneohe Bay',21.477,-157.752],['51208','Hanalei, Kauaʻi',22.285,-159.574],
+  ['51211','Pearl Harbor Ent.',21.297,-157.959],['51212','Barbers Pt',21.323,-158.149],
+  ['51213','Lānaʻi SW',20.750,-157.002],['51101','NW Hawaii',24.359,-162.081],
+  ['51002','SW Hawaii',17.043,-157.696],['51003','W Hawaii',19.196,-160.639],['51004','SE Hawaii',17.604,-152.364],
+  // Southern California (NDBC/CDIP)
+  ['46086','San Clemente Basin',32.499,-118.052],['46232','Point Loma S',32.517,-117.425],
+  ['46225','Torrey Pines Outer',32.933,-117.391],['46254','Scripps Nearshore',32.868,-117.267],
+  ['46224','Oceanside',33.178,-117.472],['46258','Mission Bay W',32.749,-117.502],
+  ['46266','Del Mar',32.957,-117.279],['46222','San Pedro',33.618,-118.317],
+  ['46221','Santa Monica Bay',33.860,-118.641],['46253','San Pedro S',33.576,-118.181],
+  ['46219','San Nicolas Is',33.226,-119.891],['46047','Tanner Bank',32.403,-119.524],
+  ['46218','Harvest / Pt Conception',34.452,-120.780],['46011','Santa Maria',34.956,-120.992],
+  // Guam / Marianas (NDBC)
+  ['52200','Guam (Apra)',13.354,144.788],['52202','Ipan, Guam',13.729,144.789],
+  ['52211','Saipan',15.270,145.662],['52201','Kwajalein',8.740,167.740],
+  // Japan / Okinawa (NOWPHAS / JMA — approx)
+  ['~HKT','Hakata / Fukuoka ≈',33.62,130.30,1],['~NGS','Nagasaki ≈',32.70,129.75,1],
+  ['~ABR','Aburatsu, Miyazaki ≈',31.58,131.42,1],['~SBK','Saiki, Ōita ≈',32.95,132.05,1],
+  ['~TKY','Tokyo Bay ≈',35.30,139.80,1],['~KSM','Kashima ≈',35.90,140.80,1],
+  ['~OMZ','Omaezaki ≈',34.50,138.22,1],['~SNR','Sanriku GPS ≈',38.20,141.70,1],
+  ['~NAH','Naha, Okinawa ≈',26.20,127.65,1],['~ISG','Ishigaki ≈',24.35,124.18,1],
+];
+
+// ---------- CITIES ----------
+const CITIES=[['Honolulu, Oʻahu',21.31,-157.86],['San Francisco',37.77,-122.42],['Los Angeles',34.05,-118.24],['San Diego',32.72,-117.17],['Hakata Port 博多港',33.604,130.408],['Fukuoka 福岡',33.59,130.40],
+  ['Tokyo 東京',35.68,139.69],['Haneda HND 羽田 (Ōta-ku)',35.549,139.779],['Hagåtña, Guam',13.47,144.75],['Naha 那覇',26.21,127.68],
+  ['Seattle',47.606,-122.332],['Vancouver',49.283,-123.121],['Anchorage, AK',61.218,-149.900]];
+
+// Offshore oil/gas platforms — Pacific OCS (California). EXPOSURE layer: assets a hazard can threaten, NOT a hazard source.
+// Positions approximate (cluster-accurate); authoritative exact coords at BOEM/BSEE.
+const PLATFORMS=[
+  ['Hondo','ExxonMobil · Santa Ynez',34.390,-120.122],['Harmony','ExxonMobil · Santa Ynez',34.378,-120.165],['Heritage','ExxonMobil · Santa Ynez',34.350,-120.158],
+  ['Hermosa','Santa Maria Basin',34.452,-120.770],['Harvest','Santa Maria Basin',34.469,-120.680],['Hidalgo','Santa Maria Basin',34.495,-120.700],['Irene','Point Pedernales',34.620,-120.778],
+  ['Hogan','off Carpinteria',34.379,-119.556],['Houchin','off Carpinteria',34.373,-119.560],['Habitat','off Carpinteria',34.348,-119.587],
+  ['A','Dos Cuadras',34.312,-119.563],['B','Dos Cuadras',34.317,-119.617],['C','Dos Cuadras',34.324,-119.589],['Hillhouse','Dos Cuadras',34.331,-119.604],['Henry','Dos Cuadras',34.336,-119.558],
+  ['Grace','off Ventura',34.178,-119.467],['Gail','off Pt Hueneme',34.125,-119.400],['Gina','off Pt Hueneme',34.123,-119.279],['Gilda','off Pt Hueneme',34.183,-119.418],
+  ['Holly','state · off Goleta',34.389,-119.906],
+  ['Ellen','Beta · off Huntington Bch',33.582,-118.128],['Elly','Beta · processing',33.583,-118.127],['Eureka','Beta field',33.564,-118.116],['Edith','state · San Pedro Bay',33.589,-118.003],
+  ['Esther','San Pedro Bay',33.747,-118.110],['Eva','San Pedro Bay',33.752,-118.108],['Emmy','San Pedro Bay',33.750,-118.105],
+];
+const SEEPS=[['Coal Oil Point seep field','Santa Barbara Channel',34.388,-119.890,
+  'One of the world\u2019s largest NATURAL marine oil seeps. Active ~500,000 yrs; ~50\u2013100 bbl oil/day + heavy methane; source is the Monterey Formation. Not from drilling \u2014 in fact production near Platform Holly reduced local seepage by relieving reservoir pressure.']];
+
+// ---------- International Date Line (approx; real coords, PL() applied when drawn) ----------
+// Follows ~180° but jogs east at the Bering Strait (Diomedes), west around the Aleutians,
+// and far east around Kiribati's Line Islands, then around Samoa/Tokelau.
+const IDL=[[72,180],[67,180],[65.6,-169],[58,-169],[52.5,-169],[52.5,170],[50,170],[48,180],[12,180],
+  [5,180],[5,-150],[-3,-150],[-11,-150],[-11,-167],[-15,-171],[-30,-173],[-45,180],[-52,180]];
+
+// ---------- Ring of Fire schematic outline (real coords; PL() applied when drawn) ----------
+const ROF=[[-39,178],[-30,-178],[-22,-176],[-16,168],[-9,160],[-5,152],[2,128],[6,126],[13,124],[21,122],
+  [27,128],[31,131],[35,140],[38,142],[45,150],[48,155],[52,159],[56,162],[55,167],[53,173],[52,179],
+  [52,-176],[54,-169],[56,-160],[58,-152],[59,-147],[55,-135],[50,-129],[46,-126],[42,-125],[36,-122],
+  [33,-119],[27,-114],[23,-110],[18,-105],[15,-99],[13,-91],[10,-85],[5,-80],[-1,-81],[-8,-79],[-16,-74],
+  [-23,-70],[-33,-72],[-41,-74],[-47,-75],[-53,-72]];
+
+// ---------- build map ----------
+if(typeof L==='undefined'){
+  document.getElementById('map').innerHTML='<div class="nolf">'+t('nolf')+'</div>';
+  setStatus(t('stOffline'));
+} else {
+  const map=L.map('map',{minZoom:2,maxZoom:12,attributionControl:true,worldCopyJump:false}).setView([21.46,-157.97],3);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    subdomains:'abcd',maxZoom:19,
+    attribution:'&copy; OpenStreetMap &copy; CARTO · quakes USGS · Japan JMA防災/P2P地震情報 · volcanoes GVP/USGS · aircraft airplanes.live · buoys NDBC/NOWPHAS'
+  }).addTo(map);
+  setTimeout(()=>map.invalidateSize(),250);   // iOS Safari: tiles stay blank until size is recomputed
+  setTimeout(()=>map.invalidateSize(),900);
+  window.addEventListener('load',()=>map.invalidateSize());
+  window.addEventListener('resize',()=>map.invalidateSize());
+  window.addEventListener('orientationchange',()=>setTimeout(()=>map.invalidateSize(),300));
+
+  const triIcon=(col,size)=>L.divIcon({className:'',iconSize:[size,size],iconAnchor:[size/2,size-1],
+    html:`<svg width="${size}" height="${size}" viewBox="0 0 20 20"><polygon points="10,1 19,18 1,18" fill="${col}" stroke="#0B0F19" stroke-width="1.6"/></svg>`});
+  const sqIcon=(col,sz)=>L.divIcon({className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],
+    html:`<div style="width:${sz}px;height:${sz}px;background:${col};opacity:.6;border:1.5px solid #fff;box-sizing:border-box"></div>`});
+  const planeIcon=h=>L.divIcon({className:'',iconSize:[16,16],iconAnchor:[8,8],
+    html:`<div style="transform:rotate(${(h||0)-45}deg);font-size:13px;color:${C.teal};text-shadow:0 0 2px #000">✈</div>`});
+
+  const volcLayer=L.layerGroup(), quakeLayer=L.layerGroup(), rofLayer=L.layerGroup(),
+        buoyLayer=L.layerGroup(), cityLayer=L.layerGroup(), planeLayer=L.layerGroup(), platformLayer=L.layerGroup(), gridLayer=L.layerGroup(), idlLayer=L.layerGroup(), jpqLayer=L.layerGroup();
+
+  // Ring of Fire schematic
+  L.polyline(ROF.map(p=>[p[0],PL(p[1])]),{color:C.orange,weight:1.5,dashArray:'7 7',opacity:.55}).addTo(rofLayer);
+
+  // lat/lon graticule (drawn in the Pacific-continuous frame so it aligns with everything)
+  (function(){
+    const lonMin=-300, lonMax=20, latMin=-80, latMax=84, step=15;
+    const line=(pts,bright)=>L.polyline(pts,{color:C.blue,weight:bright?1.1:0.7,opacity:bright?0.34:0.15,interactive:false}).addTo(gridLayer);
+    const lab=(la,lo,txt)=>L.marker([la,lo],{interactive:false,keyboard:false,
+      icon:L.divIcon({className:'glabel',html:txt,iconSize:[0,0]})}).addTo(gridLayer);
+    for(let la=latMin; la<=latMax; la+=step){
+      line([[la,lonMin],[la,lonMax]], la===0);
+      lab(la, -258, la===0?'0°':(la>0?la+'°N':(-la)+'°S'));
+    }
+    for(let lo=lonMin; lo<=lonMax; lo+=step){
+      const real=lo< -180?lo+360:lo;
+      line([[latMin,lo],[latMax,lo]], Math.abs(real)===180);
+      const txt = real===0?'0°':real>0?real+'°E':(-real)+'°W';
+      lab(-7, lo+0.4, txt);
+    }
+  })();
+
+  // International Date Line (distinct from the straight 180° grid line)
+  L.polyline(IDL.map(p=>[p[0],PL(p[1])]),{color:'#F5F5F5',weight:1.5,dashArray:'2 7',opacity:.8,interactive:false}).addTo(idlLayer);
+  [[60,-169],[5,-150],[-30,-173]].forEach(([la,lo])=>L.marker([la,PL(lo)],{interactive:false,keyboard:false,
+    icon:L.divIcon({className:'vlabel',html:'Int\u2019l Date Line',iconSize:[0,0]})}).addTo(idlLayer));
+
+  // cities
+  CITIES.forEach(([n,la,lo])=>L.marker([la,PL(lo)],{icon:L.divIcon({className:'',iconSize:[10,10],iconAnchor:[5,5],
+    html:`<div style="width:8px;height:8px;background:${C.blue};border:2px solid #fff;border-radius:50%"></div>`})})
+    .bindTooltip(n,{direction:'top',className:'vlabel'}).addTo(cityLayer));
+
+  // Hisayama (久山町, Fukuoka) — property location; JMA 防災 (bosai) forecast for the Fukuoka area
+  const hisayamaMarker=L.marker([33.613,PL(130.483)],{icon:L.divIcon({className:'',iconSize:[16,16],iconAnchor:[8,8],
+    html:`<div style="font-size:14px;filter:drop-shadow(0 0 2px #000)">🏠</div>`})})
+    .bindTooltip('久山 Hisayama 防災',{direction:'top',className:'vlabel'})
+    .bindPopup('<b>久山町 Hisayama</b><br><span style="color:#6B7280">防災 forecast loading…</span>').addTo(cityLayer);
+  async function loadHisayama(){
+    try{
+      const d=await getJSON('https://www.jma.go.jp/bosai/forecast/data/overview_forecast/400000.json');
+      const head=d.headlineText?`<span style="color:${C.amber}">⚠ ${d.headlineText}</span><br>`:'';
+      const body=(d.text||'').replace(/\u3000/g,' ').replace(/\n/g,'<br>');
+      hisayamaMarker.setPopupContent(`<b>久山町 Hisayama · 防災</b><br>`+
+        `<span style="color:#6B7280">${d.publishingOffice||'気象庁'} · ${d.reportDatetime?new Date(d.reportDatetime).toLocaleString([],{hour12:false}):''}</span><br>`+
+        head+body+`<br><a href="https://www.jma.go.jp/bosai/#area_type=class20s&area_code=4034800" target="_blank">JMA 防災 →</a>`);
+    }catch(e){
+      hisayamaMarker.setPopupContent('<b>久山町 Hisayama</b><br><span style="color:#6B7280">防災 feed unavailable — host over https</span>');
+    }
+  }
+
+  // offshore platforms (EXPOSURE) + natural seeps
+  const platIcon=L.divIcon({className:'',iconSize:[10,10],iconAnchor:[5,5],
+    html:`<div style="width:7px;height:7px;background:${C.amber};border:1.5px solid #0B0F19;transform:rotate(45deg)"></div>`});
+  PLATFORMS.forEach(([n,op,la,lo])=>L.marker([la,PL(lo)],{icon:platIcon}).addTo(platformLayer)
+    .bindPopup(`<b>🛢 Platform ${n}</b><br>${op}<br>${la.toFixed(3)}, ${lo.toFixed(3)}<br><span style="color:#6B7280">exposure — asset a hazard can threaten, not a cause · approx position</span>`));
+  SEEPS.forEach(([n,op,la,lo,desc])=>L.circleMarker([la,PL(lo)],{radius:8,color:'#A16207',weight:2,fillColor:'#713F12',fillOpacity:.75}).addTo(platformLayer)
+    .bindPopup(`<b>⬤ ${n}</b><br>${op} · <span style="color:${C.amber}">NATURAL</span><br>${la.toFixed(3)}, ${lo.toFixed(3)}<br>${desc}`)
+    .bindTooltip('natural seep',{direction:'top',className:'vlabel'}));
+
+  // buoys
+  BUOYS.forEach(([id,nm,la,lo,approx])=>{
+    const col=approx?C.dim:C.teal;
+    L.circleMarker([la,PL(lo)],{radius:3.4,color:col,weight:1.4,fillColor:col,fillOpacity:.5}).addTo(buoyLayer)
+     .bindPopup(`<b>${approx?'≈ ':''}Buoy ${id}</b><br>${nm}<br>${la.toFixed(3)}, ${lo.toFixed(3)}<br>`+
+        (approx?'<span style="color:#6B7280">NOWPHAS/JMA · approx position</span><br><a href="https://www.mlit.go.jp/kowan/nowphas/index_eng.html" target="_blank">NOWPHAS live →</a>'
+               :`<a href="https://www.ndbc.noaa.gov/station_page.php?station=${id}" target="_blank">NDBC station →</a>`));
+  });
+
+  // volcanoes (+ best-effort live alert cross-ref)
+  function drawVolcanoes(elevated){
+    volcLayer.clearLayers();
+    const evNorm=(Array.isArray(elevated)?elevated:[]).map(e=>({nm:norm(e.volcano_name||e.name||e.title||''),
+      lvl:String(e.color_code||e.alert_level||e.alertLevel||'elevated').toUpperCase()}));
+    VOLC.forEach(v=>{
+      const vk=norm(v.n).split(/[ ·]/)[0];
+      const hit=evNorm.find(e=>e.nm&&vk&&(e.nm.includes(vk)||vk.includes(e.nm.split(' ')[0])));
+      const col=hit?C.red:(v.h?C.purple:C.orange);
+      const size=hit?17:13;
+      const m=L.marker([v.la,PL(v.lo)],{icon:triIcon(col,size)}).addTo(volcLayer);
+      m.bindPopup(`<b>🌋 ${v.n}</b><br>${v.r}<br>${v.la.toFixed(3)}, ${v.lo.toFixed(3)}`+
+        (v.h?'<br><span style="color:'+C.purple+'">hotspot volcano — not subduction</span>':'')+
+        (hit?`<br><span style="color:${C.red}">⚠ live alert: ${hit.lvl}</span>`:''));
+      if(/Fuji/.test(v.n)) m.bindTooltip('Mt. Fuji',{permanent:true,direction:'right',className:'vlabel',offset:[8,0]});
+    });
+  }
+  drawVolcanoes(null);
+
+  // seismicity (live USGS)
+  function depthCol(d){return d<70?C.red:d<300?C.amber:C.blue;}
+  const inUS=(la,lo)=> la>=15&&la<=72&&lo>=-170&&lo<=-65;   // N. America box (real lon)
+  async function loadQuakes(){
+    const out=await Promise.allSettled([
+      getJSON('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson'),
+      getJSON('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/significant_month.geojson')
+    ]);
+    quakeLayer.clearLayers();
+    const seen=new Set(); let n=0;
+    out.forEach(o=>{ if(o.status!=='fulfilled'||!o.value.features) return;
+      o.value.features.forEach(f=>{
+        if(seen.has(f.id))return; seen.add(f.id);
+        const[lo,la,dep]=f.geometry.coordinates; const p=f.properties, mag=p.mag;
+        if(mag==null)return;
+        if(!(mag>=4.5 || (mag>=2.5 && inUS(la,lo)))) return;  // global M4.5+, full US detail to M2.5+
+        const r=Math.max(3,(mag-3)*3.1), col=depthCol(dep||0), tsu=p.tsunami===1;
+        L.circleMarker([la,PL(lo)],{radius:r,color:col,weight:tsu?2.5:1,opacity:tsu?1:.85,
+          fillColor:col,fillOpacity:.35,dashArray:tsu?'3 3':null}).addTo(quakeLayer)
+         .bindPopup(`<b>M ${mag.toFixed(1)}</b>${tsu?' <span style="color:'+C.red+'">⚠ tsunami flag</span>':''}<br>`+
+           `${(p.place||'').replace(/^\d+\s*km\s*/,'')}<br>depth ${Math.round(dep||0)} km · ${new Date(p.time).toLocaleString([],{hour12:false})}<br>`+
+           `<a href="${p.url}" target="_blank">USGS event →</a>`);
+        n++;
+      });
+    });
+    return n;
+  }
+
+  // Japan seismicity — OFFICIAL JMA 防災 earthquake feed (bosai/quake/data/list.json),
+  // with P2P地震情報 as an automatic fallback if the JMA feed is unreachable.
+  const SHINDO_JA={'1':'1','2':'2','3':'3','4':'4','5-':'5弱','5+':'5強','6-':'6弱','6+':'6強','7':'7'};
+  const shindoP2P=s=>({10:'1',20:'2',30:'3',40:'4',45:'5弱',46:'5弱',50:'5強',55:'6弱',60:'6強',70:'7'})[s]||'—';
+  // ISO 6709 cod e.g. "+35.1+140.0-70000/" (decimal deg) or "+3634.8+13751.0-8000/" (DDMM.M); depth in metres
+  function parseCod(cod){
+    if(!cod) return null;
+    const m=cod.match(/([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)?/);
+    if(!m) return null;
+    const toDeg=(s,max)=>{ const v=parseFloat(s),a=Math.abs(v); if(a<=max) return v; const sgn=v<0?-1:1,deg=Math.trunc(a/100),min=a-deg*100; return sgn*(deg+min/60); };
+    const la=toDeg(m[1],90), lo=toDeg(m[2],180);
+    if(isNaN(la)||isNaN(lo)) return null;
+    return {la,lo,dep:m[3]!=null?Math.abs(parseFloat(m[3]))/1000:null};
+  }
+  async function loadJapanQuakesJMA(){
+    const d=await getJSON('https://www.jma.go.jp/bosai/quake/data/list.json');
+    jpqLayer.clearLayers(); let n=0; const seen=new Set();
+    const sep=LANG==='ja'?' ・ ':' · ', Lm=LANG==='ja'?'深さ':LANG==='es'?'prof.':'depth',
+          Li=LANG==='ja'?'最大震度':LANG==='es'?'intensidad máx.':'max intensity', Llink=LANG==='ja'?'気象庁 地震情報 →':LANG==='es'?'info sísmica JMA →':'JMA earthquake info →';
+    (Array.isArray(d)?d:[]).forEach(ev=>{
+      if(!ev||seen.has(ev.eid)) return;
+      const c=parseCod(ev.cod); if(!c) return;            // skip intensity-only (震度速報) reports w/o epicentre
+      seen.add(ev.eid);
+      const mag=(ev.mag!==''&&ev.mag!=null)?parseFloat(ev.mag):null;
+      const maxi=ev.maxi||'';
+      const shindo = maxi ? (LANG==='ja'?(SHINDO_JA[maxi]||maxi):maxi) : '';
+      const col=depthCol(c.dep!=null?c.dep:0), sz=Math.max(7,Math.min(22,((mag>0?mag:3))*3));
+      const name = LANG==='ja' ? (ev.anm||'震源') : (ev.en_anm||ev.anm||'Epicentre');
+      const at = ev.at ? ev.at.slice(0,16).replace('T',' ')+' JST' : '';
+      const magStr = mag>0?mag.toFixed(1):'—', depStr = c.dep!=null?Math.round(c.dep)+' km':'—';
+      const eurl='https://www.data.jma.go.jp/multi/quake/index.html?lang='+(LANG==='ja'?'jp':LANG==='es'?'es':'en');
+      L.marker([c.la,PL(c.lo)],{icon:sqIcon(col,sz)}).addTo(jpqLayer)
+       .bindPopup(`<b>${name}</b><br>M${magStr}${sep}${Lm} ${depStr}${shindo?sep+Li+' '+shindo:''}<br>${at}`+
+         `<br><a href="${eurl}" target="_blank" rel="noopener" style="color:${C.blue}">${Llink}</a>`+
+         `<br><span style="color:#6B7280">気象庁 JMA</span>`);
+      n++;
+    });
+    return n;
+  }
+  async function loadJapanQuakesP2P(){
+    const d=await getJSON('https://api.p2pquake.net/v2/history?codes=551&limit=100');
+    jpqLayer.clearLayers(); let n=0;
+    (Array.isArray(d)?d:[]).forEach(ev=>{
+      const eq=ev.earthquake; if(!eq||!eq.hypocenter)return;
+      const h=eq.hypocenter, la=h.latitude, lo=h.longitude, mag=h.magnitude, dep=h.depth;
+      if(la==null||lo==null||la<-90||la>90||lo< -180||lo>180||la===-200||lo===-200)return;
+      const col=depthCol(dep>=0?dep:0), sz=Math.max(7,Math.min(20,(mag>0?mag:3)*3));
+      const tsu=eq.domesticTsunami&&/Warning|Watch/.test(eq.domesticTsunami);
+      L.marker([la,PL(lo)],{icon:sqIcon(col,sz)}).addTo(jpqLayer)
+       .bindPopup(`<b>${h.name||'震源'} · 震度${shindoP2P(eq.maxScale)}</b><br>`+
+         `M${mag>0?mag.toFixed(1):'—'} · 深さ ${dep>=0?dep+' km':'—'}<br>${eq.time||''}`+
+         (tsu?`<br><span style="color:${C.red}">⚠ 津波 ${eq.domesticTsunami}</span>`:'')+
+         `<br><span style="color:#6B7280">気象庁 (JMA) · P2P地震情報</span>`);
+      n++;
+    });
+    return n;
+  }
+  async function loadJapanQuakes(){
+    try{ const n=await loadJapanQuakesJMA(); if(n>0) return n; }catch(e){}
+    try{ return await loadJapanQuakesP2P(); }catch(e){ return 0; }
+  }
+
+  // Jアラート-class tsunami warnings — JMA 防災 (津波予報) via P2P地震情報, code 552.
+  // (Civil-protection / missile alerts have no public API and are intentionally not shown.)
+  function loadTsunami(){
+    const el=document.getElementById('jalert');
+    const labJ={MajorWarning:'大津波警報',Warning:'津波警報',Watch:'津波注意報',Unknown:'津波予報'};
+    const labE=LANG==='ja'?{}:LANG==='es'?{MajorWarning:'aviso de gran tsunami',Warning:'aviso de tsunami',Watch:'advertencia de tsunami',Unknown:'aviso de tsunami'}:{MajorWarning:'MAJOR tsunami warning',Warning:'tsunami warning',Watch:'tsunami advisory',Unknown:'tsunami notice'};
+    const order=['MajorWarning','Warning','Watch','Unknown'];
+    return getJSON('https://api.p2pquake.net/v2/history?codes=552&limit=10').then(d=>{
+      const rec=Array.isArray(d)&&d.length?d[0]:null;
+      if(!rec||rec.cancelled||!Array.isArray(rec.areas)||!rec.areas.length){
+        el.className='jalert';
+        el.innerHTML=t('jalertNone');
+        return;
+      }
+      const byG={}; rec.areas.forEach(a=>{ (byG[a.grade]=byG[a.grade]||[]).push(a.name); });
+      const top=order.find(g=>byG[g]&&byG[g].length)||'Unknown';
+      el.className='jalert '+(top==='Watch'?'watch':'active');
+      const parts=order.filter(g=>byG[g]&&byG[g].length).map(g=>
+        `<b>${labJ[g]}</b>${labE[g]?' '+labE[g]:''}: ${byG[g].slice(0,8).join('・')}${byG[g].length>8?' 他':''}`);
+      el.innerHTML='🚨 '+parts.join(' ／ ')+` <span style="color:var(--dim)">· ${rec.issue&&rec.issue.time?rec.issue.time:''} JMA防災/P2P</span>`;
+    }).catch(()=>{
+      el.className='jalert';
+      el.innerHTML=t('jalertOff');
+    });
+  }
+  async function loadPlanes(){
+    const c=map.getCenter();
+    const realLon = c.lng < -180 ? c.lng+360 : (c.lng>180 ? c.lng-360 : c.lng);
+    const ne=map.getBounds().getNorthEast();
+    const nm=Math.min(250, Math.max(50, Math.round(map.distance(c,ne)/1852)));
+    const url=`https://api.airplanes.live/v2/point/${c.lat.toFixed(3)}/${realLon.toFixed(3)}/${nm}`;
+    try{
+      const d=await getJSON(url); planeLayer.clearLayers();
+      const ac=d.ac||[];
+      ac.slice(0,800).forEach(a=>{
+        if(a.lat==null||a.lon==null||a.alt_baro==='ground')return;
+        L.marker([a.lat,PL(a.lon)],{icon:planeIcon(a.track)}).addTo(planeLayer)
+         .bindPopup(`<b>✈ ${((a.flight||a.r||a.hex||'')+'').trim()||'(no callsign)'}</b><br>${a.t||''} · alt ${a.alt_baro!=null?a.alt_baro+' ft':'—'} · ${a.gs!=null?Math.round(a.gs)+' kt':'—'}<br><span style="color:#6B7280">airplanes.live · context only, not a weather input</span>`);
+      });
+      setStatus(t('stAircraft',{n:ac.length,r:nm,t:new Date().toLocaleTimeString([],{hour12:false})}));
+    }catch(e){ setStatus(t('stAircraftErr',{e:e.message})); }
+  }
+
+  const layerCtl = L.control.layers(null,{
+    [t('lyGrid')]:gridLayer,
+    [t('lyIDL')]:idlLayer,
+    [t('lyVolc')]:volcLayer,
+    [t('lyQuake')]:quakeLayer,
+    [t('lyJpq')]:jpqLayer,
+    [t('lyRof')]:rofLayer,
+    [t('lyBuoy')]:buoyLayer,
+    [t('lyPlat')]:platformLayer,
+    [t('lyCity')]:cityLayer,
+    [t('lyPlane')]:planeLayer
+  },{collapsed:false}).addTo(map);
+  // Collapsible header so the layers panel can be closed/opened (matches Framing/Legend)
+  (function(){
+    const lc=layerCtl.getContainer(); if(!lc) return;
+    const hdr=document.createElement('div'); hdr.className='lyr-hdr';
+    hdr.innerHTML='<span>'+t('lyrHdr')+'</span><span class="cev">▾</span>';
+    lc.insertBefore(hdr, lc.firstChild);
+    const cev=hdr.querySelector('.cev');
+    const sync=()=>{ cev.textContent=lc.classList.contains('lyr-min')?'▸':'▾'; };
+    L.DomEvent.on(hdr,'click',ev=>{ L.DomEvent.stop(ev); lc.classList.toggle('lyr-min'); sync(); });
+    if(window.matchMedia('(max-width:620px)').matches) lc.classList.add('lyr-min');
+    sync();
+  })();
+
+  // default-on layers
+  [gridLayer,idlLayer,volcLayer,quakeLayer,jpqLayer,rofLayer,buoyLayer,platformLayer,cityLayer].forEach(l=>l.addTo(map));
+
+  map.on('overlayadd',e=>{ if(e.layer===planeLayer) loadPlanes(); });
+
+  async function refreshAll(){
+    setStatus(t('stLoading'));
+    let elevated=null;
+    try{ elevated=await getJSON('https://volcanoes.usgs.gov/hans-public/api/volcano/getElevatedVolcanoes'); }catch(e){}
+    drawVolcanoes(elevated);
+    let qn=0; try{ qn=await loadQuakes(); }catch(e){}
+    let jn=0; try{ jn=await loadJapanQuakes(); }catch(e){}
+    loadTsunami();
+    loadHisayama();
+    if(map.hasLayer(planeLayer)) loadPlanes();
+    setStatus(t('stCounts',{v:VOLC.length,q:qn,j:jn,t:new Date().toLocaleTimeString([],{hour12:false})}));
+  }
+  document.getElementById('refreshBtn').addEventListener('click',refreshAll);
+  refreshAll();
+}
+</script>
+</body>
+</html>
