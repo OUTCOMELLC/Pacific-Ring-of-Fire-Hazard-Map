@@ -103,7 +103,7 @@
     <span class="grp"><i style="background:var(--orange)"></i>3–4 m</span>
     <span class="grp"><i style="background:var(--red)"></i>&gt;4 m</span>
     <span class="grp"><i style="background:var(--dim)"></i><span data-i18n="legNoData">no data</span></span>
-    <span class="grp" style="color:var(--dim)" data-i18n="legSource">● NDBC real · ■ NOWPHAS/JMA approx · click for live detail</span>
+    <span class="grp" style="color:var(--dim)" data-i18n="legSource">● NDBC real · ■ NOWPHAS/JMA approx · ◆ DART tsunami · click for live detail</span>
   </div>
   <div class="note" data-i18n="note">
     Wave height is a model value (Open-Meteo Marine) sampled at each buoy's location, since NDBC's raw feeds block browser access. Japan/Okinawa stations (■) are approximate NOWPHAS/JMA positions. Live data needs an https connection; markers still plot offline. Map © OpenStreetMap, CARTO.
@@ -122,7 +122,7 @@ const T={
   refreshWaves:{en:'Refresh waves',ja:'波浪を更新'},
   legHdr:{en:'Sig. wave H',ja:'有義波高'},
   legNoData:{en:'no data',ja:'データなし'},
-  legSource:{en:'● NDBC real · ■ NOWPHAS/JMA approx · click for live detail',ja:'● NDBC実測 ・ ■ NOWPHAS/JMA概略 ・ クリックで詳細'},
+  legSource:{en:'● NDBC real · ■ NOWPHAS/JMA approx · ◆ DART tsunami · click for live detail',ja:'● NDBC実測 ・ ■ NOWPHAS/JMA概略 ・ ◆ DART津波 ・ クリックで詳細'},
   note:{en:'Wave height is a model value (Open-Meteo Marine) sampled at each buoy\u2019s location, since NDBC\u2019s raw feeds block browser access. Japan/Okinawa stations (■) are approximate NOWPHAS/JMA positions. Live data needs an https connection; markers still plot offline. Map © OpenStreetMap, CARTO.',ja:'波高はモデル値（Open-Meteo Marine）を各ブイ位置でサンプリングしたものです（NDBCの生フィードはブラウザからのアクセスを遮断するため）。日本・沖縄の観測点（■）はNOWPHAS/JMAの概略位置です。ライブデータにはhttps接続が必要ですが、オフラインでもマーカーは表示されます。地図 © OpenStreetMap, CARTO。'},
   stampLoading:{en:'loading waves…',ja:'波浪取得中…'},
   stampLive:{en:'{ok} buoys live{fail} · {t}',ja:'ブイ {ok} 点ライブ{fail} ・ {t}'},
@@ -130,7 +130,7 @@ const T={
   stampOffline:{en:'no live wave data (offline?) — positions shown',ja:'波浪データなし（オフライン？）— 位置のみ表示'},
   pSig:{en:'Sig. wave Hs',ja:'有義波高'},pPeriod:{en:'Wave period',ja:'波周期'},pDir:{en:'Wave dir',ja:'波向'},pSwell:{en:'Swell Hs',ja:'うねり高'},pSwellP:{en:'Swell period',ja:'うねり周期'},pSwellD:{en:'Swell dir',ja:'うねり向'},pWindWave:{en:'Wind-wave Hs',ja:'風波高'},
   pNoData:{en:'No live wave data — needs an https connection',ja:'波浪データなし — https接続が必要'},
-  view_ov:{en:'N. Pacific overview',ja:'北太平洋 全体'},view_hi:{en:'Hawaiʻi',ja:'ハワイ'},view_sc:{en:'S. California',ja:'南カリフォルニア'},view_jp:{en:'Japan · Okinawa',ja:'日本 ・ 沖縄'},view_gu:{en:'Guam · Marianas',ja:'グアム ・ マリアナ'},
+  view_ov:{en:'N. Pacific overview',ja:'北太平洋 全体'},view_hi:{en:'Hawaiʻi',ja:'ハワイ'},view_sc:{en:'S. California',ja:'南カリフォルニア'},view_jp:{en:'Japan · Okinawa',ja:'日本 ・ 沖縄'},view_gu:{en:'Guam · Marianas',ja:'グアム ・ マリアナ'},view_wc:{en:'U.S. West Coast',ja:'米国西海岸'},view_ak:{en:'Alaska & N. Pacific',ja:'アラスカ・北太平洋'},view_dart:{en:'DART tsunami buoys',ja:'DART 津波ブイ'},
 };
 function t(k,v){ let s=(T[k]&&(T[k][LANG]||T[k].en))||k; if(v) for(const x in v) s=s.replace('{'+x+'}',v[x]); return s; }
 const ES={
@@ -139,13 +139,13 @@ const ES={
   sub:'Red de boyas del Pacífico · altura significativa de ola en vivo por estación',
   refreshWaves:'Actualizar olas',
   legHdr:'Altura sign. ola',legNoData:'sin datos',
-  legSource:'● NDBC real · ■ NOWPHAS/JMA aprox · clic para detalle en vivo',
+  legSource:'● NDBC real · ■ NOWPHAS/JMA aprox · ◆ DART tsunami · clic para detalle en vivo',
   note:'La altura de ola es un valor de modelo (Open-Meteo Marine) muestreado en la ubicación de cada boya, ya que los datos crudos de NDBC bloquean el acceso del navegador. Las estaciones de Japón/Okinawa (■) son posiciones aproximadas NOWPHAS/JMA. Los datos en vivo requieren conexión https; las marcas se muestran igual sin conexión. Mapa © OpenStreetMap, CARTO.',
   stampLoading:'cargando olas…',stampLive:'{ok} boyas en vivo{fail} · {t}',stampFail:' · {n} sin datos',
   stampOffline:'sin datos de olas en vivo (¿sin conexión?) — se muestran posiciones',
   pSig:'Altura sign. ola',pPeriod:'Período de ola',pDir:'Dirección de ola',pSwell:'Altura marejada',pSwellP:'Período marejada',pSwellD:'Dirección marejada',pWindWave:'Altura ola de viento',
   pNoData:'Sin datos de olas en vivo — requiere conexión https',
-  view_ov:'Pacífico Norte (general)',view_hi:'Hawái',view_sc:'Sur de California',view_jp:'Japón · Okinawa',view_gu:'Guam · Marianas',
+  view_ov:'Pacífico Norte (general)',view_hi:'Hawái',view_sc:'Sur de California',view_jp:'Japón · Okinawa',view_gu:'Guam · Marianas',view_wc:'Costa Oeste de EE. UU.',view_ak:'Alaska y Pac. Norte',view_dart:'Boyas de tsunami DART',
 };
 Object.keys(ES).forEach(k=>{ if(T[k]) T[k].es=ES[k]; else T[k]={en:ES[k],ja:ES[k],es:ES[k]}; });
 function applyChrome(){ document.documentElement.lang=LANG; document.querySelectorAll('[data-i18n]').forEach(el=>{ el.innerHTML=t(el.dataset.i18n); }); }
@@ -176,6 +176,39 @@ const BUOYS=[
   {id:'~OTA',nm:'Tokyo Bay · Ōi/Ōta 大田',la:35.55,lo:139.86,rg:'jp',ap:1},{id:'~KSM',nm:'Kashima',la:35.90,lo:140.80,rg:'jp',ap:1},
   {id:'~OMZ',nm:'Omaezaki',la:34.50,lo:138.22,rg:'jp',ap:1},{id:'~SNR',nm:'Sanriku GPS',la:38.20,lo:141.70,rg:'jp',ap:1},
   {id:'~NAH',nm:'Naha, Okinawa',la:26.20,lo:127.65,rg:'jp',ap:1},{id:'~ISG',nm:'Ishigaki',la:24.35,lo:124.18,rg:'jp',ap:1},
+  // --- U.S. West Coast (OR/WA + N/Central CA) · NDBC ---
+  {id:'46089',nm:'Tillamook, OR',la:45.928,lo:-125.815,rg:'wc'},{id:'46050',nm:'Stonewall Bank, OR',la:44.679,lo:-124.535,rg:'wc'},
+  {id:'46029',nm:'Columbia River Bar',la:46.148,lo:-124.508,rg:'wc'},{id:'46041',nm:'Cape Elizabeth, WA',la:47.353,lo:-124.739,rg:'wc'},
+  {id:'46087',nm:'Neah Bay, WA',la:48.494,lo:-124.728,rg:'wc'},{id:'46015',nm:'Port Orford, OR',la:42.764,lo:-124.832,rg:'wc'},
+  {id:'46027',nm:'St Georges, CA',la:41.850,lo:-124.382,rg:'wc'},{id:'46022',nm:'Eel River, CA',la:40.720,lo:-124.531,rg:'wc'},
+  {id:'46014',nm:'Pt Arena, CA',la:39.235,lo:-123.974,rg:'wc'},{id:'46013',nm:'Bodega Bay, CA',la:38.242,lo:-123.301,rg:'wc'},
+  {id:'46026',nm:'San Francisco, CA',la:37.759,lo:-122.833,rg:'wc'},{id:'46012',nm:'Half Moon Bay, CA',la:37.363,lo:-122.881,rg:'wc'},
+  {id:'46042',nm:'Monterey, CA',la:36.787,lo:-122.408,rg:'wc'},{id:'46028',nm:'Cape San Martin, CA',la:35.770,lo:-121.905,rg:'wc'},
+  {id:'46059',nm:'West California (offshore)',la:38.067,lo:-129.895,rg:'wc'},{id:'46002',nm:'West Oregon (offshore)',la:42.612,lo:-130.490,rg:'wc'},
+  {id:'46005',nm:'West Washington (offshore)',la:46.134,lo:-131.030,rg:'wc'},
+  // --- Alaska & North Pacific (Gulf of Alaska, Aleutians, Bering) · NDBC ---
+  {id:'46001',nm:'W Gulf of Alaska',la:56.296,lo:-148.027,rg:'ak'},{id:'46085',nm:'Central Gulf of Alaska',la:55.840,lo:-142.895,rg:'ak'},
+  {id:'46080',nm:'Portlock Bank, AK',la:57.947,lo:-150.043,rg:'ak'},{id:'46076',nm:'Cape Cleare, AK',la:59.502,lo:-147.990,rg:'ak'},
+  {id:'46060',nm:'W Orca Bay (PWS)',la:60.571,lo:-146.795,rg:'ak'},{id:'46061',nm:'Seal Rocks (PWS)',la:60.230,lo:-146.837,rg:'ak'},
+  {id:'46066',nm:'South Kodiak',la:52.776,lo:-154.992,rg:'ak'},{id:'46075',nm:'Shumagin Is',la:53.911,lo:-160.808,rg:'ak'},
+  {id:'46073',nm:'SE Bering Sea',la:55.008,lo:-172.012,rg:'ak'},{id:'46035',nm:'Central Bering Sea',la:57.034,lo:-177.468,rg:'ak'},
+  {id:'46072',nm:'Central Aleutians',la:51.645,lo:-172.145,rg:'ak'},{id:'46070',nm:'SW Bering Sea',la:55.048,lo:175.246,rg:'ak'},
+  {id:'46071',nm:'W Aleutians (Amchitka)',la:51.040,lo:179.764,rg:'ak'},
+  // --- DART deep-ocean tsunami buoys · NOAA/NDBC ---
+  {id:'21418',nm:'NE of Tokyo (Tōhoku)',la:38.730,lo:148.800,rg:'dart',dt:1},{id:'21413',nm:'SE of Tokyo',la:30.487,lo:152.124,rg:'dart',dt:1},
+  {id:'21402',nm:'E of Kuril Is (Simushir)',la:46.488,lo:158.343,rg:'dart',dt:1},{id:'21414',nm:'S of Amchitka',la:48.970,lo:178.165,rg:'dart',dt:1},
+  {id:'21415',nm:'S of Attu',la:50.120,lo:171.867,rg:'dart',dt:1},{id:'21416',nm:'SE of Kamchatka',la:48.126,lo:163.355,rg:'dart',dt:1},
+  {id:'51407',nm:'Hawaiʻi (W of Kona)',la:19.530,lo:-156.601,rg:'dart',dt:1},{id:'32411',nm:'West Panama',la:4.979,lo:-90.793,rg:'dart',dt:1},
+  {id:'32401',nm:'W of Iquique, Chile',la:-20.611,lo:-73.394,rg:'dart',dt:1},{id:'32402',nm:'W of Caldera, Chile',la:-26.743,lo:-73.983,rg:'dart',dt:1},
+  {id:'32301',nm:'E Pacific (equatorial)',la:-9.900,lo:-105.200,rg:'dart',dt:1},{id:'32302',nm:'SE Pacific',la:-18.000,lo:-85.100,rg:'dart',dt:1},
+  // --- More Japan / W. Pacific (approx NOWPHAS / coastal) ---
+  {id:'~WJM',nm:'Wajima · Noto 輪島',la:37.45,lo:136.90,rg:'jp',ap:1},{id:'~NIG',nm:'Niigata 新潟',la:38.05,lo:139.10,rg:'jp',ap:1},
+  {id:'~AKT',nm:'Akita 秋田',la:39.80,lo:139.95,rg:'jp',ap:1},{id:'~WKN',nm:'Wakkanai 稚内',la:45.42,lo:141.70,rg:'jp',ap:1},
+  {id:'~KRO',nm:'Kushiro, Hokkaidō 釧路',la:42.90,lo:144.45,rg:'jp',ap:1},{id:'~TMK',nm:'Tomakomai 苫小牧',la:42.45,lo:141.10,rg:'jp',ap:1},
+  {id:'~ONH',nm:'Onahama, Fukushima 小名浜',la:36.90,lo:141.00,rg:'jp',ap:1},{id:'~MRT',nm:'Muroto, Kōchi 室戸',la:33.25,lo:134.18,rg:'jp',ap:1},
+  {id:'~TSS',nm:'Tosashimizu 土佐清水',la:32.72,lo:133.02,rg:'jp',ap:1},{id:'~STA',nm:'Sata · Kagoshima 佐多',la:30.95,lo:130.70,rg:'jp',ap:1},
+  {id:'~AMM',nm:'Amami Ōshima 奄美',la:28.30,lo:129.55,rg:'jp',ap:1},{id:'~MYK',nm:'Miyako Is 宮古島',la:24.78,lo:125.30,rg:'jp',ap:1},
+  {id:'~CHC',nm:'Chichijima · Ogasawara 父島',la:27.10,lo:142.20,rg:'jp',ap:1},
 ];
 
 // view -> map bounds (lat, PL(lon))
@@ -183,8 +216,11 @@ const VIEWS={
   ov:{name:'N. Pacific overview', b:[[3,-244],[40,-110]]},
   hi:{name:'Hawaiʻi',             b:[[16.5,-163],[25,-152]]},
   sc:{name:'S. California',       b:[[31.6,-121.6],[35.4,-116.8]]},
+  wc:{name:'U.S. West Coast',     b:[[35,-132],[49,-116]]},
+  ak:{name:'Alaska & N. Pacific', b:[[50,-187],[61.5,-145]]},
   jp:{name:'Japan · Okinawa',     b:[[23,-237],[39.5,-217]]},
   gu:{name:'Guam · Marianas',     b:[[7,-217],[17,-191]]},
+  dart:{name:'DART tsunami buoys',b:[[-28,-213],[51,-72]]},
 };
 
 const WAVES={};
@@ -206,8 +242,8 @@ function buoyInfoHTML(b){
   } else {
     rows.push(`<div class="brw"><span class="k" style="color:#6B7280">${t('pNoData')}</span></div>`);
   }
-  return `<div class="bnm">${b.ap?'■':'●'} ${b.id}</div>`+
-    `<div class="bco">${b.nm} · ${b.la.toFixed(3)}, ${b.lo.toFixed(3)}${b.ap?' · approx (NOWPHAS/JMA)':''}</div>`+
+  return `<div class="bnm">${b.dt?'◆':b.ap?'■':'●'} ${b.id}</div>`+
+    `<div class="bco">${b.nm} · ${b.la.toFixed(3)}, ${b.lo.toFixed(3)}${b.dt?' · DART tsunami buoy (NOAA)':b.ap?' · approx (NOWPHAS/JMA)':''}</div>`+
     rows.join('')+
     `<div class="bsrc">Open-Meteo Marine model · sampled at station coordinates · ${w?('updated '+new Date().toLocaleTimeString([],{hour12:false})):'awaiting data'}</div>`;
 }
@@ -235,11 +271,15 @@ function renderMarkers(){
       const sz=Math.round(r*1.7);
       m=L.marker(ll,{icon:L.divIcon({className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],
         html:`<div style="width:${sz}px;height:${sz}px;background:${col};opacity:.7;border:1.5px solid #fff;box-sizing:border-box"></div>`})});
+    } else if(b.dt){
+      const sz=Math.round(r*1.5), bx=sz+6;
+      m=L.marker(ll,{icon:L.divIcon({className:'',iconSize:[bx,bx],iconAnchor:[bx/2,bx/2],
+        html:`<div style="width:${bx}px;height:${bx}px;display:flex;align-items:center;justify-content:center"><div style="width:${sz}px;height:${sz}px;background:${col};opacity:.9;border:1.6px solid #EC4899;box-sizing:border-box;transform:rotate(45deg)"></div></div>`})});
     } else {
       m=L.circleMarker(ll,{radius:r,color:col,weight:1.5,opacity:.95,fillColor:col,fillOpacity:.45});
     }
     m.bindPopup(buoyInfoHTML(b),{maxWidth:260});
-    m.bindTooltip(`${b.ap?'■':'●'} ${b.id}${w&&w.h!=null?' · '+w.h.toFixed(1)+'m':''}`,{direction:'top',opacity:.9});
+    m.bindTooltip(`${b.dt?'◆':b.ap?'■':'●'} ${b.id}${w&&w.h!=null?' · '+w.h.toFixed(1)+'m':''}`,{direction:'top',opacity:.9});
     m.addTo(layer);
   });
 }
@@ -251,7 +291,7 @@ function flyTo(key){
 
 async function fetchWaves(){
   btn.classList.add('busy'); stamp.textContent=t('stampLoading');
-  const regions=['hi','sc','gu','jp']; let ok=0,fail=0;
+  const regions=['hi','sc','gu','jp','wc','ak','dart']; let ok=0,fail=0;
   try{
     await Promise.all(regions.map(async rg=>{
       const list=BUOYS.filter(b=>b.rg===rg); if(!list.length)return;
