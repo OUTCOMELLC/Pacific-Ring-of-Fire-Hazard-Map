@@ -54,7 +54,6 @@
   <div class="langbar" id="langbar">
     <button data-l="en">English</button>
     <button data-l="ja" lang="ja">日本語</button>
-    <button data-l="es">Español</button>
   </div>
   <header>
     <div class="brand">
@@ -65,19 +64,19 @@
   </header>
 
   <div class="grid">
-    <a class="card" href="ring-of-fire-map.html">
+    <a class="card" data-tool="ring-of-fire-map" href="ring-of-fire-map.html">
       <div class="ic">🌋</div>
       <h2 id="t-c1h">Ring of Fire Map</h2>
       <p id="t-c1p"></p>
       <div class="go" id="t-open1">Open →</div>
     </a>
-    <a class="card" href="pacific-hazard.html">
+    <a class="card" data-tool="pacific-hazard" href="pacific-hazard.html">
       <div class="ic">🛰️</div>
       <h2 id="t-c2h">Coastal Hazard Dashboard</h2>
       <p id="t-c2p"></p>
       <div class="go" id="t-open2">Open →</div>
     </a>
-    <a class="card" href="coastal-chart-plot.html">
+    <a class="card" data-tool="coastal-chart-plot" href="coastal-chart-plot.html">
       <div class="ic">🛟</div>
       <h2 id="t-c3h">Buoy Chart Plot</h2>
       <p id="t-c3p"></p>
@@ -118,32 +117,25 @@
 <script>
 const STR={
   tag:{en:'Wind &amp; Water forecast · Earth &amp; Fire hazard · one situational picture',
-       ja:'風と水の予報 ／ 地と火のハザード ／ ひとつの状況把握',
-       es:'Pronóstico de viento y mar · Peligros de tierra y fuego · una sola vista'},
+       ja:'風と水の予報 ／ 地と火のハザード ／ ひとつの状況把握'},
   intro:{en:'Three tools that pull live public feeds into one honest view of the Pacific. They display and forecast conditions — they do not replace official warnings. For any safety decision, the authorities (NWS/NHC, JMA 気象庁, the Pacific Tsunami Warning Center) are the source of truth.',
-       ja:'公開データをリアルタイムに取り込み、太平洋の状況をひとつの実直なビューにまとめる3つのツールです。状況の表示と予報を行いますが、公式の警報に代わるものではありません。安全に関わる判断は、必ず公的機関（米国 NWS／NHC、気象庁、太平洋津波警報センター）の情報を正としてください。',
-       es:'Tres herramientas que reúnen datos públicos en tiempo real en una vista honesta del Pacífico. Muestran y pronostican condiciones; no sustituyen los avisos oficiales. Para cualquier decisión de seguridad, las autoridades (NWS/NHC, JMA 気象庁, el Centro de Alerta de Tsunamis del Pacífico) son la fuente de verdad.'},
-  c1h:{en:'Ring of Fire Map',ja:'環太平洋火山帯マップ',es:'Mapa del Cinturón de Fuego'},
+       ja:'公開データをリアルタイムに取り込み、太平洋の状況をひとつの実直なビューにまとめる3つのツールです。状況の表示と予報を行いますが、公式の警報に代わるものではありません。安全に関わる判断は、必ず公的機関（米国 NWS／NHC、気象庁、太平洋津波警報センター）の情報を正としてください。'},
+  c1h:{en:'Ring of Fire Map',ja:'環太平洋火山帯マップ'},
   c1p:{en:'A Pacific-centered map of live seismicity, active volcanoes, the buoy network and offshore platforms — the geophysical hazard track.',
-       ja:'ライブ地震活動、活火山、ブイ網、洋上プラットフォームを太平洋中心の地図で表示。地球物理ハザードの系列です。',
-       es:'Un mapa centrado en el Pacífico con sismicidad en vivo, volcanes activos, la red de boyas y plataformas: la vía de peligros geofísicos.'},
-  c2h:{en:'Coastal Hazard Dashboard',ja:'沿岸ハザードダッシュボード',es:'Panel de Riesgos Costeros'},
+       ja:'ライブ地震活動、活火山、ブイ網、洋上プラットフォームを太平洋中心の地図で表示。地球物理ハザードの系列です。'},
+  c2h:{en:'Coastal Hazard Dashboard',ja:'沿岸ハザードダッシュボード'},
   c2p:{en:'The actual weather forecast for Hawaii, California, Kyushu, Honshu & Tokyo Bay — pressure, wind, the air column, waves, tides & moon, with a transparent risk score.',
-       ja:'ハワイ、カリフォルニア、九州、本州、東京湾の実際の気象予報。気圧、風、大気層、波、潮汐と月齢を、透明性のあるリスクスコアとともに。',
-       es:'El pronóstico real para Hawái, California, Kyushu, Honshu y la Bahía de Tokio: presión, viento, columna de aire, olas, mareas y luna, con una puntuación de riesgo transparente.'},
-  c3h:{en:'Buoy Chart Plot',ja:'ブイ海図プロット',es:'Carta de Boyas'},
+       ja:'ハワイ、カリフォルニア、九州、本州、東京湾の実際の気象予報。気圧、風、大気層、波、潮汐と月齢を、透明性のあるリスクスコアとともに。'},
+  c3h:{en:'Buoy Chart Plot',ja:'ブイ海図プロット'},
   c3p:{en:'A nautical-style lat/lon chart plot of buoys across the Pacific coasts, each colored by live significant wave height.',
-       ja:'太平洋沿岸のブイを緯度経度の海図風にプロット。各ブイは有義波高でライブ配色されます。',
-       es:'Una carta náutica de latitud/longitud con boyas de las costas del Pacífico, coloreadas según la altura significativa de ola en vivo.'},
-  open:{en:'Open →',ja:'開く →',es:'Abrir →'},
-  areash:{en:'Areas covered',ja:'対象エリア',es:'Áreas cubiertas'},
-  srch:{en:'Data sources',ja:'データソース',es:'Fuentes de datos'},
+       ja:'太平洋沿岸のブイを緯度経度の海図風にプロット。各ブイは有義波高でライブ配色されます。'},
+  open:{en:'Open →',ja:'開く →'},
+  areash:{en:'Areas covered',ja:'対象エリア'},
+  srch:{en:'Data sources',ja:'データソース'},
   note:{en:'<b style="color:var(--orange)">What this is — and isn\'t.</b> Wind &amp; Water signals (pressure, wind, swell, tide, moon) legitimately combine into a forecast. Earth &amp; Fire signals (quakes, volcanoes, geomagnetic) are a <b style="color:#C7CEDB">separate</b> hazard track — a big undersea quake is a real tsunami precursor, but none of them predict weather.',
-       ja:'<b style="color:var(--orange)">これは何で、何でないか。</b>風と水のシグナル（気圧・風・うねり・潮汐・月）は予報として正当に組み合わせられます。地と火のシグナル（地震・火山・地磁気）は<b style="color:#C7CEDB">別系列</b>のハザードです。海底の大地震は本物の津波の前兆ですが、いずれも天気を予測するものではありません。',
-       es:'<b style="color:var(--orange)">Qué es y qué no es.</b> Las señales de viento y mar (presión, viento, marejada, marea, luna) se combinan legítimamente en un pronóstico. Las señales de tierra y fuego (sismos, volcanes, geomagnetismo) son una vía <b style="color:#C7CEDB">aparte</b>: un gran sismo submarino sí es un precursor real de tsunami, pero ninguna predice el clima.'},
+       ja:'<b style="color:var(--orange)">これは何で、何でないか。</b>風と水のシグナル（気圧・風・うねり・潮汐・月）は予報として正当に組み合わせられます。地と火のシグナル（地震・火山・地磁気）は<b style="color:#C7CEDB">別系列</b>のハザードです。海底の大地震は本物の津波の前兆ですが、いずれも天気を予測するものではありません。'},
   foot:{en:'Self-hosted static pages · all data fetched live in your browser · best over https. Area names shown in their local languages.',
-       ja:'自己ホストの静的ページ · すべてのデータはブラウザでライブ取得 · https 推奨。地名は各地の言語で表示しています。',
-       es:'Páginas estáticas autoalojadas · todos los datos se obtienen en vivo en tu navegador · mejor con https. Los nombres de las áreas se muestran en sus idiomas locales.'}
+       ja:'自己ホストの静的ページ · すべてのデータはブラウザでライブ取得 · https 推奨。地名は各地の言語で表示しています。'}
 };
 function setLang(l){
   document.documentElement.lang=l;
@@ -155,6 +147,9 @@ function setLang(l){
   document.getElementById('t-c2p').textContent=STR.c2p[l];
   document.getElementById('t-c3h').textContent=STR.c3h[l];
   document.getElementById('t-c3p').textContent=STR.c3p[l];
+  // Tools exist in EN + JA. JA homepage routes to .ja.html; EN routes to the English tools.
+  const sfx = l==='ja' ? '.ja.html' : '.html';
+  document.querySelectorAll('a.card[data-tool]').forEach(a=>{ a.href=a.dataset.tool+sfx; });
   document.getElementById('t-open1').textContent=STR.open[l];
   document.getElementById('t-open2').textContent=STR.open[l];
   document.getElementById('t-open3').textContent=STR.open[l];
@@ -168,7 +163,7 @@ function setLang(l){
 document.querySelectorAll('#langbar button').forEach(b=>b.addEventListener('click',()=>setLang(b.dataset.l)));
 const init=(location.hash||'').replace('#','');
 const nav=(navigator.language||'').slice(0,2);
-setLang(['en','ja','es'].includes(init)?init : (['ja','es'].includes(nav)?nav:'en'));
+setLang(['en','ja'].includes(init)?init : (nav==='ja'?'ja':'en'));
 </script>
 </body>
 </html>

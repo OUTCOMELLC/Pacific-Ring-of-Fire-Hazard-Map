@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pacific Ring of Fire — Hazard Map</title>
+<title>環太平洋火山帯 ・ ハザードマップ</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Saira:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -112,11 +112,11 @@
   <div class="mark"></div>
   <div><h1><span data-i18n="title">Pacific Ring of Fire · Hazard Map</span><span class="s" data-i18n="sub">Volcanoes · Live Seismicity · Buoys · Aircraft — geophysical track, parallel to weather</span></h1></div>
   <nav class="nav">
-    <a href="index.html" data-i18n="navHome">⌂ Home</a>
-    <a href="pacific-hazard.html" data-i18n="navDash">🛰 Dashboard</a>
-    <a href="ring-of-fire-map.html" class="on" data-i18n="navMap">🌋 Map</a>
-    <a href="coastal-chart-plot.html" data-i18n="navBuoy">🛟 Buoy Map</a>
-    <span class="langlinks"><a href="ring-of-fire-map.html" class="on">EN</a><a href="ring-of-fire-map.ja.html" lang="ja">日本語</a></span>
+    <a href="index.html#ja" data-i18n="navHome">⌂ Home</a>
+    <a href="pacific-hazard.ja.html" data-i18n="navDash">🛰 Dashboard</a>
+    <a href="ring-of-fire-map.ja.html" class="on" data-i18n="navMap">🌋 Map</a>
+    <a href="coastal-chart-plot.ja.html" data-i18n="navBuoy">🛟 Buoy Map</a>
+    <span class="langlinks"><a href="ring-of-fire-map.html">EN</a><a href="ring-of-fire-map.ja.html" class="on" lang="ja">日本語</a></span>
   </nav>
   <span id="status" data-i18n="stInit">initializing…</span>
   <button class="rf" id="refreshBtn" data-i18n="refresh">Refresh</button>
@@ -148,7 +148,7 @@
 <script>
 const C={orange:'#FB8102',blue:'#3B82F6',green:'#22C55E',amber:'#F59E0B',red:'#EF4444',purple:'#A855F7',teal:'#2DD4BF',dim:'#475569'};
 /* ===== i18n — LANG fixed per file (en here; ja in the .ja.html copy) ===== */
-const LANG='en';
+const LANG='ja';
 const T={
   navHome:{en:'⌂ Home',ja:'⌂ ホーム'},navDash:{en:'🛰 Dashboard',ja:'🛰 ダッシュボード'},navMap:{en:'🌋 Map',ja:'🌋 マップ'},navBuoy:{en:'🛟 Buoy Map',ja:'🛟 ブイマップ'},
   title:{en:'Pacific Ring of Fire · Hazard Map',ja:'環太平洋火山帯 ・ ハザードマップ'},

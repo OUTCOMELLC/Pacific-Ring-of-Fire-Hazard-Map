@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Coastal Buoy Map</title>
+<title>沿岸ブイマップ</title>
 <link href="https://fonts.googleapis.com/css2?family=Saira:wght@400;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <style>
@@ -80,11 +80,11 @@
 <body>
 <div class="wrap">
   <nav class="nav">
-    <a href="index.html" data-i18n="navHome">⌂ Home</a>
-    <a href="pacific-hazard.html" data-i18n="navDash">🛰 Dashboard</a>
-    <a href="ring-of-fire-map.html" data-i18n="navMap">🌋 Ring of Fire Map</a>
-    <a href="coastal-chart-plot.html" class="on" data-i18n="navBuoy">🛟 Buoy Map</a>
-    <span class="langlinks"><a href="coastal-chart-plot.html" class="on">EN</a><a href="coastal-chart-plot.ja.html" lang="ja">日本語</a></span>
+    <a href="index.html#ja" data-i18n="navHome">⌂ Home</a>
+    <a href="pacific-hazard.ja.html" data-i18n="navDash">🛰 Dashboard</a>
+    <a href="ring-of-fire-map.ja.html" data-i18n="navMap">🌋 Ring of Fire Map</a>
+    <a href="coastal-chart-plot.ja.html" class="on" data-i18n="navBuoy">🛟 Buoy Map</a>
+    <span class="langlinks"><a href="coastal-chart-plot.html">EN</a><a href="coastal-chart-plot.ja.html" class="on" lang="ja">日本語</a></span>
   </nav>
   <header>
     <div class="mark"></div>
@@ -114,7 +114,7 @@
 <script>
 const C={teal:'#2DD4BF',blue:'#3B82F6',amber:'#F59E0B',orange:'#FB8102',red:'#EF4444',dim:'#475569'};
 /* ===== i18n — LANG fixed per file (en here; ja in the .ja.html copy) ===== */
-const LANG='en';
+const LANG='ja';
 const T={
   navHome:{en:'⌂ Home',ja:'⌂ ホーム'},navDash:{en:'🛰 Dashboard',ja:'🛰 ダッシュボード'},navMap:{en:'🌋 Ring of Fire Map',ja:'🌋 環太平洋火山帯マップ'},navBuoy:{en:'🛟 Buoy Map',ja:'🛟 ブイマップ'},
   title:{en:'Coastal Buoy Map',ja:'沿岸ブイマップ'},

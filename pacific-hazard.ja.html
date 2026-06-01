@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pacific Coastal Hazard Console</title>
+<title>太平洋沿岸ハザードコンソール</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -216,11 +216,11 @@
 <body>
 <div class="wrap">
   <nav class="nav">
-    <a href="index.html" data-i18n="navHome">⌂ Home</a>
-    <a href="pacific-hazard.html" class="on" data-i18n="navDash">🛰 Dashboard</a>
-    <a href="ring-of-fire-map.html" data-i18n="navMap">🌋 Ring of Fire Map</a>
-    <a href="coastal-chart-plot.html" data-i18n="navBuoy">🛟 Buoy Map</a>
-    <span class="langlinks"><a href="pacific-hazard.html" class="on">EN</a><a href="pacific-hazard.ja.html" lang="ja">日本語</a></span>
+    <a href="index.html#ja" data-i18n="navHome">⌂ Home</a>
+    <a href="pacific-hazard.ja.html" class="on" data-i18n="navDash">🛰 Dashboard</a>
+    <a href="ring-of-fire-map.ja.html" data-i18n="navMap">🌋 Ring of Fire Map</a>
+    <a href="coastal-chart-plot.ja.html" data-i18n="navBuoy">🛟 Buoy Map</a>
+    <span class="langlinks"><a href="pacific-hazard.html">EN</a><a href="pacific-hazard.ja.html" class="on" lang="ja">日本語</a></span>
   </nav>
   <header>
     <div class="hrow">
@@ -321,7 +321,7 @@ const WMO = {
 const wmo = c => WMO[c] || ['🌐','—'];
 
 /* ===== i18n — LANG is fixed per file (en here; ja in the .ja.html copy) ===== */
-const LANG='en';
+const LANG='ja';
 const JADESC={0:'快晴',1:'晴れ',2:'晴れ時々曇り',3:'曇り',45:'霧',48:'着氷性の霧',51:'弱い霧雨',53:'霧雨',55:'強い霧雨',56:'着氷性の霧雨',57:'着氷性の霧雨',61:'弱い雨',63:'雨',65:'強い雨',66:'着氷性の雨',67:'着氷性の雨',71:'弱い雪',73:'雪',75:'強い雪',77:'霧雪',80:'にわか雨',81:'にわか雨',82:'激しいにわか雨',85:'にわか雪',86:'にわか雪',95:'雷雨',96:'雷雨・ひょう',99:'激しい雷雨'};
 function wdesc(c){ return LANG==='ja' ? (JADESC[c]||'—') : (WMO[c]?WMO[c][1]:'—'); }
 function intlLocale(){ return LANG==='ja'?'ja-JP':'en-GB'; }
