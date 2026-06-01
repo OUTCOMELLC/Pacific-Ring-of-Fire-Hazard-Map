@@ -84,7 +84,7 @@
     <a href="pacific-hazard.html" data-i18n="navDash">🛰 Dashboard</a>
     <a href="ring-of-fire-map.html" data-i18n="navMap">🌋 Ring of Fire Map</a>
     <a href="coastal-chart-plot.html" class="on" data-i18n="navBuoy">🛟 Buoy Map</a>
-    <span class="langlinks"><a href="coastal-chart-plot.html" class="on">EN</a><a href="coastal-chart-plot.ja.html" lang="ja">日本語</a></span>
+    <span class="langlinks"><a href="coastal-chart-plot.html" class="on">EN</a><a href="coastal-chart-plot.ja.html" lang="ja">日本語</a><a href="coastal-chart-plot.es.html" lang="es">Español</a></span>
   </nav>
   <header>
     <div class="mark"></div>
@@ -133,6 +133,21 @@ const T={
   view_ov:{en:'N. Pacific overview',ja:'北太平洋 全体'},view_hi:{en:'Hawaiʻi',ja:'ハワイ'},view_sc:{en:'S. California',ja:'南カリフォルニア'},view_jp:{en:'Japan · Okinawa',ja:'日本 ・ 沖縄'},view_gu:{en:'Guam · Marianas',ja:'グアム ・ マリアナ'},
 };
 function t(k,v){ let s=(T[k]&&(T[k][LANG]||T[k].en))||k; if(v) for(const x in v) s=s.replace('{'+x+'}',v[x]); return s; }
+const ES={
+  navHome:'⌂ Inicio',navDash:'🛰 Panel',navMap:'🌋 Mapa del Cinturón de Fuego',navBuoy:'🛟 Mapa de boyas',
+  title:'Mapa de Boyas Costeras',
+  sub:'Red de boyas del Pacífico · altura significativa de ola en vivo por estación',
+  refreshWaves:'Actualizar olas',
+  legHdr:'Altura sign. ola',legNoData:'sin datos',
+  legSource:'● NDBC real · ■ NOWPHAS/JMA aprox · clic para detalle en vivo',
+  note:'La altura de ola es un valor de modelo (Open-Meteo Marine) muestreado en la ubicación de cada boya, ya que los datos crudos de NDBC bloquean el acceso del navegador. Las estaciones de Japón/Okinawa (■) son posiciones aproximadas NOWPHAS/JMA. Los datos en vivo requieren conexión https; las marcas se muestran igual sin conexión. Mapa © OpenStreetMap, CARTO.',
+  stampLoading:'cargando olas…',stampLive:'{ok} boyas en vivo{fail} · {t}',stampFail:' · {n} sin datos',
+  stampOffline:'sin datos de olas en vivo (¿sin conexión?) — se muestran posiciones',
+  pSig:'Altura sign. ola',pPeriod:'Período de ola',pDir:'Dirección de ola',pSwell:'Altura marejada',pSwellP:'Período marejada',pSwellD:'Dirección marejada',pWindWave:'Altura ola de viento',
+  pNoData:'Sin datos de olas en vivo — requiere conexión https',
+  view_ov:'Pacífico Norte (general)',view_hi:'Hawái',view_sc:'Sur de California',view_jp:'Japón · Okinawa',view_gu:'Guam · Marianas',
+};
+Object.keys(ES).forEach(k=>{ if(T[k]) T[k].es=ES[k]; else T[k]={en:ES[k],ja:ES[k],es:ES[k]}; });
 function applyChrome(){ document.documentElement.lang=LANG; document.querySelectorAll('[data-i18n]').forEach(el=>{ el.innerHTML=t(el.dataset.i18n); }); }
 const stamp=document.getElementById('stamp'), btn=document.getElementById('refreshBtn');
 async function getJSON(url,ms=12000){const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),ms);let r;try{r=await fetch(url,{signal:ctrl.signal});}catch(e){clearTimeout(timer);throw new Error(e&&e.name==='AbortError'?'timeout':'network/CORS blocked');}clearTimeout(timer);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}

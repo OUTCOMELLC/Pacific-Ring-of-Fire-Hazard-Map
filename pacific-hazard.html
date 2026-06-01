@@ -220,7 +220,7 @@
     <a href="pacific-hazard.html" class="on" data-i18n="navDash">🛰 Dashboard</a>
     <a href="ring-of-fire-map.html" data-i18n="navMap">🌋 Ring of Fire Map</a>
     <a href="coastal-chart-plot.html" data-i18n="navBuoy">🛟 Buoy Map</a>
-    <span class="langlinks"><a href="pacific-hazard.html" class="on">EN</a><a href="pacific-hazard.ja.html" lang="ja">日本語</a></span>
+    <span class="langlinks"><a href="pacific-hazard.html" class="on">EN</a><a href="pacific-hazard.ja.html" lang="ja">日本語</a><a href="pacific-hazard.es.html" lang="es">Español</a></span>
   </nav>
   <header>
     <div class="hrow">
@@ -284,8 +284,8 @@ const LOCATIONS = [
   { id:'tb', name:'Tokyo Bay', sub:'Haneda HND · 大田区 Ōta', lat:35.549, lon:139.779, tz:'Asia/Tokyo', fog:true,
     mLat:35.45, mLon:139.88, tide:null, tideName:null,
     volc:[] },
-  { id:'ho', name:'Honshu', sub:'Tokyo · 東京', lat:35.68, lon:139.69, tz:'Asia/Tokyo',
-    mLat:35.10, mLon:140.30, tide:null, tideName:null,
+  { id:'ot', name:'Ōta-ku Senzoku', sub:'大田区 洗足 · Tokyo', lat:35.603, lon:139.696, tz:'Asia/Tokyo',
+    mLat:35.55, mLon:139.86, tide:null, tideName:null,
     volc:[{n:'Mt. Fuji 富士山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_4.html'},
           {n:'Asama 浅間山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_3.html'}] },
   { id:'mz', name:'Miyazaki', sub:'宮崎 · Hyūga-nada 日向灘', lat:31.91, lon:131.42, tz:'Asia/Tokyo',
@@ -323,8 +323,9 @@ const wmo = c => WMO[c] || ['🌐','—'];
 /* ===== i18n — LANG is fixed per file (en here; ja in the .ja.html copy) ===== */
 const LANG='en';
 const JADESC={0:'快晴',1:'晴れ',2:'晴れ時々曇り',3:'曇り',45:'霧',48:'着氷性の霧',51:'弱い霧雨',53:'霧雨',55:'強い霧雨',56:'着氷性の霧雨',57:'着氷性の霧雨',61:'弱い雨',63:'雨',65:'強い雨',66:'着氷性の雨',67:'着氷性の雨',71:'弱い雪',73:'雪',75:'強い雪',77:'霧雪',80:'にわか雨',81:'にわか雨',82:'激しいにわか雨',85:'にわか雪',86:'にわか雪',95:'雷雨',96:'雷雨・ひょう',99:'激しい雷雨'};
-function wdesc(c){ return LANG==='ja' ? (JADESC[c]||'—') : (WMO[c]?WMO[c][1]:'—'); }
-function intlLocale(){ return LANG==='ja'?'ja-JP':'en-GB'; }
+const ESDESC={0:'Despejado',1:'Mayormente despejado',2:'Parcialmente nublado',3:'Nublado',45:'Niebla',48:'Niebla con escarcha',51:'Llovizna débil',53:'Llovizna',55:'Llovizna intensa',56:'Llovizna helada',57:'Llovizna helada',61:'Lluvia débil',63:'Lluvia',65:'Lluvia intensa',66:'Lluvia helada',67:'Lluvia helada',71:'Nieve débil',73:'Nieve',75:'Nieve intensa',77:'Granos de nieve',80:'Chubascos',81:'Chubascos',82:'Chubascos violentos',85:'Chubascos de nieve',86:'Chubascos de nieve',95:'Tormenta',96:'Tormenta con granizo',99:'Tormenta fuerte con granizo'};
+function wdesc(c){ return LANG==='ja' ? (JADESC[c]||'—') : LANG==='es' ? (ESDESC[c]||(WMO[c]?WMO[c][1]:'—')) : (WMO[c]?WMO[c][1]:'—'); }
+function intlLocale(){ return LANG==='ja'?'ja-JP':LANG==='es'?'es-ES':'en-GB'; }
 const T={
   navHome:{en:'⌂ Home',ja:'⌂ ホーム'},navDash:{en:'🛰 Dashboard',ja:'🛰 ダッシュボード'},navMap:{en:'🌋 Ring of Fire Map',ja:'🌋 環太平洋火山帯マップ'},navBuoy:{en:'🛟 Buoy Map',ja:'🛟 ブイマップ'},
   title:{en:'Pacific Coastal Hazard Console',ja:'太平洋沿岸ハザードコンソール'},
@@ -423,6 +424,68 @@ const T={
   loadingCard:{en:'ACQUIRING TELEMETRY',ja:'テレメトリ取得中'},
   clockLocal:{en:'· local',ja:'・ 現地'},
 };
+
+const ES={
+  navHome:'⌂ Inicio',navDash:'🛰 Panel',navMap:'🌋 Mapa del Cinturón de Fuego',navBuoy:'🛟 Mapa de boyas',
+  title:'Consola de Riesgos Costeros del Pacífico',
+  sub:'Meteorología marina · Mareas · Sismicidad del Cinturón de Fuego',
+  refresh:'Actualizar',
+  legendH:'Insignia de riesgo meteorológico · cómo funciona la puntuación',
+  bCalmR:'Calma — puntuación 0–2',bWatchR:'Atención — puntuación 3–5',bWarnR:'Aviso — puntuación 6+',
+  noteMain:'<b>Cómo leer esto:</b> La insignia de <b>riesgo meteorológico</b> es un pronóstico, calculado de forma transparente a partir de señales atmosféricas y marinas: presión baja o en descenso, viento y rachas, probabilidad de lluvia y altura significativa de ola/marejada. Las <b>mareas</b> son predecibles astronómicamente; aquí importan solo cuando se <b>combinan</b> con oleaje alto para provocar inundación costera.',
+  noteSub:'Los terremotos, volcanes y la actividad geomagnética (solar) <b style="color:#C7CEDB">no</b> pronostican el clima — ningún mecanismo físico los vincula. Piensa en <b style="color:#C7CEDB">Tierra · Fuego · Magnetismo</b>: una capa <b style="color:#C7CEDB">aparte</b> de peligros sísmicos / tsunami / ceniza / clima espacial, solo informativa. <b style="color:#C7CEDB">Viento y Agua</b> — atmósfera, océano y luna — impulsan el pronóstico real.',
+  legendSig:'Los puntos se suman según las señales siguientes; las fichas de cada tarjeta muestran cuáles se activaron. Una ficha roja = una sola señal crítica.<br><b>Presión</b> baja<span class="pill">+1→3</span> · caída rápida<span class="pill">+1→2</span> &nbsp;<b>Rachas de viento</b> fuertes→temporal<span class="pill">+1→3</span> &nbsp;<b>Lluvia</b> probabilidad / total intenso<span class="pill">+1→2</span> &nbsp;<b>Oleaje / marejada</b> elevado→muy alto<span class="pill">+1→3</span> &nbsp;<b>Tormentas</b><span class="pill">+1→2</span> &nbsp;<b>Inestabilidad</b> (CAPE) / cizalladura baja<span class="pill">+1→3</span>',
+  st_boot:'iniciando…',st_glob:'cargando datos globales…',st_city:'cargando datos de ciudades…',st_upd:'actualizado {t}',st_err:'error de carga — ver tarjetas',
+  calm:'Calma',watch:'Atención meteo',warning:'Aviso meteo',loading:'cargando',chipNone:'Sin señales adversas · puntuación 0',
+  wxHead:'Pronóstico del tiempo',wxTag:'PRONÓSTICO · 24H',
+  feels:'sensación {a}° · {rh}% HR · hoy {hi}°/{lo}°',
+  kPressure:'Presión',kWind:'Viento / racha',kRain:'Prob. lluvia',
+  verifyLead:'⚠ Esta insignia es un aviso preliminar — verifica los avisos oficiales:',
+  linkNWS:'NWS pronóstico y alertas ↗',
+  amLead:'📡 Medición actual (AMeDAS · {st}, {km} km):',amWind:'viento {v} m/s{d}',amRain:'lluvia {v} mm/h',amRH:'{v}% HR',
+  marineHead:'Marino (modelo equiv. boya)',marineTag:'OLA · MAREJADA',kSigWave:'Altura sign. ola',kPeriod:'Período',kSwell:'Altura marejada',
+  airHead:'Columna de aire · perfil vertical',airTag:'VISTA PILOTO',kStability:'Estabilidad',kGroundT:'Temp. suelo',
+  capeExtreme:'Extrema',capeStrong:'Fuerte',capeModerate:'Moderada',capeMinimal:'Mínima',
+  stUnstable:'Inestable',stMarginal:'Marginal',stCapped:'Con tapa / estable',stStable:'Estable',
+  inversion:'inversión ▲',noCap:'sin tapa',air:'aire {t}°',
+  mixedLayer:'capa de mezcla {v}',freezingLvl:'nivel de congelación {v}',shear:'cizalladura sup→850 hPa {v}',windsAloft:'viento en altura {v}',
+  marineLayerMsg:'🌫️ Inversión de capa marina ≈ {v} m — probable niebla y techos bajos (&ldquo;gloom&rdquo; costero)',
+  fogMsg:'🌫️ Niebla: <b>{lab}</b> — {det}',
+  fogSF:' · <a href="https://fog.today/" target="_blank" rel="noopener" style="color:var(--blue)">satélite de niebla SF en vivo ↗</a>',
+  fogDense:'Niebla densa ahora',fogMist:'Niebla / bruma ahora',fogForming:'Probable formación de niebla',fogClear:'Sin niebla',fogLikely:'Niebla probable',
+  fogVisM:'visibilidad {v} m',fogVisKm:'visibilidad {v} km',fogVisKmP:'visibilidad {v}+ km',fogTdew:'T–rocío {v}°C',fogTdewCloud:'T–rocío {v}°C · nubes bajas {c}%',
+  tideHead:'Mareas e inundación costera',moonIllum:'{n} · {p}% iluminada',
+  tSpring:'marea viva — máxima amplitud',tNeap:'marea muerta — mínima amplitud',tMid:'amplitud intermedia',
+  nextHigh:'▲ Próx. pleamar',nextLow:'▼ Próx. bajamar',ftMLLW:'{v} ft MLLW',
+  floodMsg:'⚠ Inundación costera {x} — oleaje de {surf} m{sp} coincide con la pleamar',
+  floodRisk:'riesgo',floodWatch:'atención',floodSpring:' en pleamar de marea viva',
+  noFlood:'○ Sin señal de inundación marea×oleaje (oleaje {s} &lt; {th} m{adj})',springAdj:' · ajuste marea viva',
+  jaTide:'No hay fuente de mareas CORS gratuita para Japón — pero la fase lunar de arriba indica la amplitud. Alturas oficiales: <a href="https://www.data.jma.go.jp/gmd/kaiyou/db/tide/suisan/index.php" target="_blank" style="color:var(--blue)">Tablas de mareas JMA</a>.',
+  anglerHead:'Pesca · solunar y desove',anglerTag:'LUNAR-MAREAL · APROX',kSST:'Temp. superficial del mar',kMajor:'Actividad mayor',kMinor:'Actividad menor',
+  spawnNoSST:'Indicio de desove — sin datos de temperatura del mar',
+  spawnFav:'Ventana de desove favorable — marea viva + TSM {t}°C (indicio para ostras / bivalvos)',
+  spawnAppr:'Marea viva ahora · TSM {t}°C — acercándose a la franja de desove (~20°C)',
+  spawnBand:'TSM {t}°C en franja, pero marea {tide} — la próxima marea viva es el detonante',
+  spawnOut:'Fuera del indicio de desove · TSM {t}°C · marea {tide}',spawnSpring:'viva',spawnNeap:'muerta',spawnMid:'media',
+  anglerIndep:'Las ventanas solunares son aproximadas (modelo de tránsito lunar) y en hora local — la alimentación máxima se agrupa cerca de ellas. Indicio de desove = marea viva (luna nueva/llena) + temperatura del agua en la franja de ~20 °C: indicativo para ostras y muchos bivalvos, no una garantía.',
+  geoHead:'Peligro geofísico',geoTag:'NO ES CLIMA',kM45:'M4.5+ / 7d',within:'dentro de {km} km',
+  tsunamiFlag:'⚠ ALERTA TSUNAMI',largest:'Mayor',noneWindow:'ninguno en el período',seismicUnavail:'⚠ datos sísmicos no disponibles',
+  noVolc:'No hay volcanes activos en la región inmediata.',
+  geoIndep:'Independiente del clima — se muestra para alerta de tsunami / sismo / ceniza. Verifica los niveles de alerta volcánica en el observatorio oficial.',
+  kpHead:'Actividad geomagnética',kpTag:'MAGNETISMO',kpLine:'Kp {k} — {l}',
+  kp_quiet:'tranquilo–inquieto',kp_active:'activo',kp_g1:'G1 tormenta menor',kp_g2:'G2 tormenta moderada',kp_g3:'G3 tormenta fuerte',kp_g4:'G4 tormenta severa',kp_g5:'G5 tormenta extrema',
+  kpLine2:'Índice K planetario · global · <span style="color:var(--dim)">clima espacial; no impulsa el tiempo troposférico</span>',
+  kpUnavail:'datos geomagnéticos no disponibles',
+  rofHead:'Cinturón de Fuego · sismos recientes importantes',rofTag:'M5.5+ · NO ES CLIMA',
+  ago:'hace {t} ↗',tsuShort:'⚠ tsu',noRof:'Sin eventos M5.5+ del borde del Pacífico en el período del catálogo.',seismicUnavail2:'datos sísmicos no disponibles',
+  tcTag:'VIENTO Y AGUA',
+  tcIntro:'Un peligro de Viento y Agua. Las agencias de ciclones no exponen sus datos al navegador, así que estos abren los rastreadores oficiales en vivo directamente:',
+  tcWP:'Pacífico occidental',tcCP:'Pacífico central / oriental',tcWPa:'Japón · Okinawa · Guam',tcCPa:'Hawái',
+  tcNote:'RSMC Tokio informa vientos sostenidos de 10 min; el NHC usa 1 min (Saffir–Simpson) — no son directamente comparables. Sigue siempre los avisos oficiales de tu agencia local.',
+  loadingCard:'OBTENIENDO TELEMETRÍA',clockLocal:'· local',
+};
+Object.keys(ES).forEach(k=>{ if(T[k]) T[k].es=ES[k]; else T[k]={en:ES[k],ja:ES[k],es:ES[k]}; });
+
 function t(k,v){ let s=(T[k]&&(T[k][LANG]||T[k].en))||k; if(v) for(const x in v) s=s.replace('{'+x+'}',v[x]); return s; }
 function applyChrome(){
   document.documentElement.lang=LANG;
@@ -692,7 +755,7 @@ function renderCard(L, data){
   const fogLink=L.id==='sf'?t('fogSF'):'';
 
   // official watch/warning authority for this city (JMA for Japan, NWS for US)
-  const JMA_OFFICE={hk:'400000',ng:'420000',mz:'450000',ho:'130000',tb:'130000'};
+  const JMA_OFFICE={hk:'400000',ng:'420000',mz:'450000',ot:'130000',tb:'130000'};
   const jo=JMA_OFFICE[L.id]||'010000';
   const verifyLink = L.tz==='Asia/Tokyo'
     ? `<a href="https://www.jma.go.jp/bosai/forecast/#area_type=offices&amp;area_code=${jo}" target="_blank" rel="noopener">JMA 天気予報 ↗</a> · <a href="https://www.jma.go.jp/bosai/warning/#area_type=offices&amp;area_code=${jo}" target="_blank" rel="noopener">気象警報・注意報 ↗</a>`
@@ -731,7 +794,8 @@ function renderCard(L, data){
   else spawnMsg=t('spawnOut',{t:num(sst,0),tide:moon.isSpring?t('spawnSpring'):moon.isNeap?t('spawnNeap'):t('spawnMid')});
   const springEff = moon.isSpring ? SURF_FLOOD_M-0.6 : SURF_FLOOD_M;  // spring high water lowers the surf threshold for flooding
   const MOONJA={'New moon':'新月','Waxing crescent':'上弦前の三日月','First quarter':'上弦の月','Waxing gibbous':'上弦後の月','Full moon':'満月','Waning gibbous':'下弦前の月','Last quarter':'下弦の月','Waning crescent':'下弦後の月'};
-  const mname = LANG==='ja' ? (MOONJA[moon.name]||moon.name) : moon.name;
+  const MOONES={'New moon':'Luna nueva','Waxing crescent':'Creciente iluminante','First quarter':'Cuarto creciente','Waxing gibbous':'Gibosa creciente','Full moon':'Luna llena','Waning gibbous':'Gibosa menguante','Last quarter':'Cuarto menguante','Waning crescent':'Creciente menguante'};
+  const mname = LANG==='ja' ? (MOONJA[moon.name]||moon.name) : LANG==='es' ? (MOONES[moon.name]||moon.name) : moon.name;
   const moonLine=`<div style="display:flex;align-items:center;gap:11px;margin-bottom:13px;font-family:var(--mono);font-size:11px;color:var(--muted)">
      <span style="font-size:22px;line-height:1">${moon.emoji}</span>
      <span>${t('moonIllum',{n:mname,p:num(moon.illum*100,0)})}<br><span style="color:${moon.isSpring?'var(--amber)':moon.isNeap?'var(--blue)':'var(--dim)'}">${moon.isSpring?t('tSpring'):moon.isNeap?t('tNeap'):t('tMid')}</span></span>

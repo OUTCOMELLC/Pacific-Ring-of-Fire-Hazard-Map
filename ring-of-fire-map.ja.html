@@ -124,7 +124,7 @@
     <a href="pacific-hazard.ja.html" data-i18n="navDash">🛰 Dashboard</a>
     <a href="ring-of-fire-map.ja.html" class="on" data-i18n="navMap">🌋 Map</a>
     <a href="coastal-chart-plot.ja.html" data-i18n="navBuoy">🛟 Buoy Map</a>
-    <span class="langlinks"><a href="ring-of-fire-map.html">EN</a><a href="ring-of-fire-map.ja.html" class="on" lang="ja">日本語</a></span>
+    <span class="langlinks"><a href="ring-of-fire-map.html">EN</a><a href="ring-of-fire-map.ja.html" class="on" lang="ja">日本語</a><a href="ring-of-fire-map.es.html" lang="es">Español</a></span>
   </nav>
   <span id="status" data-i18n="stInit">initializing…</span>
   <button class="rf" id="refreshBtn" data-i18n="refresh">Refresh</button>
@@ -181,6 +181,30 @@ const T={
   lyrHdr:{en:'🗂 Map layers',ja:'🗂 地図レイヤー'},
 };
 function t(k,v){ let s=(T[k]&&(T[k][LANG]||T[k].en))||k; if(v) for(const x in v) s=s.replace('{'+x+'}',v[x]); return s; }
+const ES={
+  navHome:'⌂ Inicio',navDash:'🛰 Panel',navMap:'🌋 Mapa',navBuoy:'🛟 Mapa de boyas',
+  title:'Cinturón de Fuego del Pacífico · Mapa de Riesgos',
+  sub:'Volcanes · Sismicidad en vivo · Boyas · Aeronaves — vía geofísica, paralela al clima',
+  refresh:'Actualizar',
+  frameTog:'ℹ︎ Explicación',
+  frameBody:'<b>Geofísico, no meteorológico.</b> Los volcanes y terremotos no pronostican tormentas — pero un gran sismo submarino <b>sí</b> es un precursor real de tsunami. Esta es la capa de peligros Tierra · Fuego.',
+  frameSub:'Los volcanes de Hawái son un punto caliente (morado), no subducción del Cinturón de Fuego. El contorno del cinturón es esquemático. Boyas ◇ aprox. (NOWPHAS/JMA). Las plataformas petroleras (🛢) son exposición — bienes que un peligro puede amenazar, no una causa. La filtración de Santa Bárbara es geología natural, no perforación.',
+  legendTog:'Leyenda',
+  legActive:'volcán activo',legHotspot:'volcán de punto caliente (Hawái)',legElevated:'nivel elevado / en erupción (en vivo)',
+  legQs:'sismo &lt;70 km (superficial)',legQm:'sismo 70–300 km',legQd:'sismo &gt;300 km (profundo)',
+  legNote:'○ tamaño ∝ magnitud · ◎ alerta de tsunami · ▪ JMA 防災 (Japón)',
+  jalertInit:'🌊 <b>Tsunami (nivel J-Alert)</b> — cargando… <span style="color:var(--dim)">(JMA防災 / P2P)</span>',
+  jalertOff:'🌊 <b>Tsunami (nivel J-Alert)</b>: sin conexión <span style="color:var(--dim)">(requiere https)</span>',
+  jalertNone:'🌊 <b>Tsunami (nivel J-Alert)</b>: sin avisos vigentes <span style="color:var(--dim)">(JMA防災/P2P)</span>',
+  stInit:'inicializando…',stOffline:'sin conexión',stLoading:'cargando…',
+  stCounts:'{v} volcanes · {q} sismos USGS · {j} sismos JMA · {t}',
+  stAircraft:'{n} aeronaves a {r} nm del centro · {t}',
+  stAircraftErr:'datos de aeronaves: {e} — requiere https',
+  nolf:'No se pudo cargar la biblioteca de mapas (Leaflet) — pareces estar sin conexión o en un entorno que bloquea el CDN.<br>Descarga este archivo y ábrelo en un navegador normal, o aloja sobre https://.',
+  lyGrid:'▦ Cuadrícula lat/lon',lyIDL:'🕒 Línea de cambio de fecha',lyVolc:'🌋 Volcanes activos',lyQuake:'◉ Sismicidad (USGS en vivo)',lyJpq:'🗾 Sismos de Japón (JMA 防災)',lyRof:'➰ Cinturón de Fuego (esquemático)',lyBuoy:'🛟 Red de boyas',lyPlat:'🛢 Plataformas marinas (exposición)',lyCity:'📍 Ciudades destacadas',lyPlane:'✈ Aeronaves (ADS-B en vivo · airplanes.live)',
+  lyrHdr:'🗂 Capas del mapa',
+};
+Object.keys(ES).forEach(k=>{ if(T[k]) T[k].es=ES[k]; else T[k]={en:ES[k],ja:ES[k],es:ES[k]}; });
 function applyChrome(){ document.documentElement.lang=LANG; document.querySelectorAll('[data-i18n]').forEach(el=>{ el.innerHTML=t(el.dataset.i18n); }); }
 applyChrome();
 // collapsible info panels — collapsed by default (mobile), auto-expanded on wider screens
@@ -467,8 +491,8 @@ if(typeof L==='undefined'){
   async function loadJapanQuakesJMA(){
     const d=await getJSON('https://www.jma.go.jp/bosai/quake/data/list.json');
     jpqLayer.clearLayers(); let n=0; const seen=new Set();
-    const sep=LANG==='ja'?' ・ ':' · ', Lm=LANG==='ja'?'深さ':'depth',
-          Li=LANG==='ja'?'最大震度':'max intensity', Llink=LANG==='ja'?'気象庁 地震情報 →':'JMA earthquake info →';
+    const sep=LANG==='ja'?' ・ ':' · ', Lm=LANG==='ja'?'深さ':LANG==='es'?'prof.':'depth',
+          Li=LANG==='ja'?'最大震度':LANG==='es'?'intensidad máx.':'max intensity', Llink=LANG==='ja'?'気象庁 地震情報 →':LANG==='es'?'info sísmica JMA →':'JMA earthquake info →';
     (Array.isArray(d)?d:[]).forEach(ev=>{
       if(!ev||seen.has(ev.eid)) return;
       const c=parseCod(ev.cod); if(!c) return;            // skip intensity-only (震度速報) reports w/o epicentre
@@ -480,7 +504,7 @@ if(typeof L==='undefined'){
       const name = LANG==='ja' ? (ev.anm||'震源') : (ev.en_anm||ev.anm||'Epicentre');
       const at = ev.at ? ev.at.slice(0,16).replace('T',' ')+' JST' : '';
       const magStr = mag>0?mag.toFixed(1):'—', depStr = c.dep!=null?Math.round(c.dep)+' km':'—';
-      const eurl='https://www.data.jma.go.jp/multi/quake/index.html?lang='+(LANG==='ja'?'jp':'en');
+      const eurl='https://www.data.jma.go.jp/multi/quake/index.html?lang='+(LANG==='ja'?'jp':LANG==='es'?'es':'en');
       L.marker([c.la,PL(c.lo)],{icon:sqIcon(col,sz)}).addTo(jpqLayer)
        .bindPopup(`<b>${name}</b><br>M${magStr}${sep}${Lm} ${depStr}${shindo?sep+Li+' '+shindo:''}<br>${at}`+
          `<br><a href="${eurl}" target="_blank" rel="noopener" style="color:${C.blue}">${Llink}</a>`+
@@ -517,7 +541,7 @@ if(typeof L==='undefined'){
   function loadTsunami(){
     const el=document.getElementById('jalert');
     const labJ={MajorWarning:'大津波警報',Warning:'津波警報',Watch:'津波注意報',Unknown:'津波予報'};
-    const labE=LANG==='ja'?{}:{MajorWarning:'MAJOR tsunami warning',Warning:'tsunami warning',Watch:'tsunami advisory',Unknown:'tsunami notice'};
+    const labE=LANG==='ja'?{}:LANG==='es'?{MajorWarning:'aviso de gran tsunami',Warning:'aviso de tsunami',Watch:'advertencia de tsunami',Unknown:'aviso de tsunami'}:{MajorWarning:'MAJOR tsunami warning',Warning:'tsunami warning',Watch:'tsunami advisory',Unknown:'tsunami notice'};
     const order=['MajorWarning','Warning','Watch','Unknown'];
     return getJSON('https://api.p2pquake.net/v2/history?codes=552&limit=10').then(d=>{
       const rec=Array.isArray(d)&&d.length?d[0]:null;
