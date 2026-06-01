@@ -99,6 +99,14 @@
   .leaflet-popup-content a{color:var(--blue);}
   .leaflet-control-layers{background:rgba(11,15,25,.985);color:var(--text);border:1px solid var(--border);border-radius:0;font-family:var(--mono);font-size:12px;}
   .leaflet-control-layers-expanded{padding:11px 13px;}
+  .lyr-hdr{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.06em;cursor:pointer;
+    display:flex;justify-content:space-between;align-items:center;gap:16px;padding:1px 1px 8px;
+    border-bottom:1px solid var(--border);margin-bottom:8px;user-select:none;}
+  .lyr-hdr:hover{color:var(--text);}
+  .lyr-hdr .cev{color:var(--orange);font-size:10px;}
+  .leaflet-control-layers.lyr-min{padding-bottom:9px;}
+  .leaflet-control-layers.lyr-min .leaflet-control-layers-list{display:none;}
+  .leaflet-control-layers.lyr-min .lyr-hdr{border-bottom:none;margin-bottom:0;padding-bottom:1px;}
   .leaflet-control-layers label{margin:5px 0;display:flex;align-items:center;gap:7px;}
   .leaflet-control-zoom a{background:var(--panel);color:var(--text);border:1px solid var(--border);}
   .leaflet-control-attribution{background:rgba(11,15,25,.8);color:var(--dim);font-size:9px;}
@@ -170,6 +178,7 @@ const T={
   stAircraftErr:{en:'aircraft feed: {e} — host over https',ja:'航空機フィード：{e} — https でのホストが必要'},
   nolf:{en:'Map library (Leaflet) could not load — you appear to be offline or in a sandbox that blocks the CDN.<br>Download this file and open it in a normal browser, or host it over https://.',ja:'地図ライブラリ（Leaflet）を読み込めませんでした — オフライン、またはCDNを遮断する環境のようです。<br>このファイルをダウンロードして通常のブラウザで開くか、https:// でホストしてください。'},
   lyGrid:{en:'▦ Lat/Lon grid',ja:'▦ 緯度経度グリッド'},lyIDL:{en:'🕒 Int’l Date Line',ja:'🕒 日付変更線'},lyVolc:{en:'🌋 Active volcanoes',ja:'🌋 活火山'},lyQuake:{en:'◉ Seismicity (USGS live)',ja:'◉ 地震活動（USGSライブ）'},lyJpq:{en:'🗾 Japan quakes (JMA 防災)',ja:'🗾 日本の地震（JMA防災）'},lyRof:{en:'➰ Ring of Fire (schematic)',ja:'➰ 環太平洋火山帯（模式）'},lyBuoy:{en:'🛟 Buoy network',ja:'🛟 ブイ網'},lyPlat:{en:'🛢 Offshore platforms (exposure)',ja:'🛢 洋上プラットフォーム（曝露）'},lyCity:{en:'📍 Focus cities',ja:'📍 注目都市'},lyPlane:{en:'✈ Aircraft (live ADS-B · airplanes.live)',ja:'✈ 航空機（ライブADS-B ・ airplanes.live）'},
+  lyrHdr:{en:'🗂 Map layers',ja:'🗂 地図レイヤー'},
 };
 function t(k,v){ let s=(T[k]&&(T[k][LANG]||T[k].en))||k; if(v) for(const x in v) s=s.replace('{'+x+'}',v[x]); return s; }
 function applyChrome(){ document.documentElement.lang=LANG; document.querySelectorAll('[data-i18n]').forEach(el=>{ el.innerHTML=t(el.dataset.i18n); }); }
@@ -441,27 +450,66 @@ if(typeof L==='undefined'){
     return n;
   }
 
-  // Japan seismicity — JMA 防災情報 via P2P地震情報 (catches small local quakes USGS misses)
-  const shindo=s=>({10:'1',20:'2',30:'3',40:'4',45:'5弱',46:'5弱',50:'5強',55:'6弱',60:'6強',70:'7'})[s]||'—';
+  // Japan seismicity — OFFICIAL JMA 防災 earthquake feed (bosai/quake/data/list.json),
+  // with P2P地震情報 as an automatic fallback if the JMA feed is unreachable.
+  const SHINDO_JA={'1':'1','2':'2','3':'3','4':'4','5-':'5弱','5+':'5強','6-':'6弱','6+':'6強','7':'7'};
+  const shindoP2P=s=>({10:'1',20:'2',30:'3',40:'4',45:'5弱',46:'5弱',50:'5強',55:'6弱',60:'6強',70:'7'})[s]||'—';
+  // ISO 6709 cod e.g. "+35.1+140.0-70000/" (decimal deg) or "+3634.8+13751.0-8000/" (DDMM.M); depth in metres
+  function parseCod(cod){
+    if(!cod) return null;
+    const m=cod.match(/([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)?/);
+    if(!m) return null;
+    const toDeg=(s,max)=>{ const v=parseFloat(s),a=Math.abs(v); if(a<=max) return v; const sgn=v<0?-1:1,deg=Math.trunc(a/100),min=a-deg*100; return sgn*(deg+min/60); };
+    const la=toDeg(m[1],90), lo=toDeg(m[2],180);
+    if(isNaN(la)||isNaN(lo)) return null;
+    return {la,lo,dep:m[3]!=null?Math.abs(parseFloat(m[3]))/1000:null};
+  }
+  async function loadJapanQuakesJMA(){
+    const d=await getJSON('https://www.jma.go.jp/bosai/quake/data/list.json');
+    jpqLayer.clearLayers(); let n=0; const seen=new Set();
+    const sep=LANG==='ja'?' ・ ':' · ', Lm=LANG==='ja'?'深さ':'depth',
+          Li=LANG==='ja'?'最大震度':'max intensity', Llink=LANG==='ja'?'気象庁 地震情報 →':'JMA earthquake info →';
+    (Array.isArray(d)?d:[]).forEach(ev=>{
+      if(!ev||seen.has(ev.eid)) return;
+      const c=parseCod(ev.cod); if(!c) return;            // skip intensity-only (震度速報) reports w/o epicentre
+      seen.add(ev.eid);
+      const mag=(ev.mag!==''&&ev.mag!=null)?parseFloat(ev.mag):null;
+      const maxi=ev.maxi||'';
+      const shindo = maxi ? (LANG==='ja'?(SHINDO_JA[maxi]||maxi):maxi) : '';
+      const col=depthCol(c.dep!=null?c.dep:0), sz=Math.max(7,Math.min(22,((mag>0?mag:3))*3));
+      const name = LANG==='ja' ? (ev.anm||'震源') : (ev.en_anm||ev.anm||'Epicentre');
+      const at = ev.at ? ev.at.slice(0,16).replace('T',' ')+' JST' : '';
+      const magStr = mag>0?mag.toFixed(1):'—', depStr = c.dep!=null?Math.round(c.dep)+' km':'—';
+      const eurl='https://www.data.jma.go.jp/multi/quake/index.html?lang='+(LANG==='ja'?'jp':'en');
+      L.marker([c.la,PL(c.lo)],{icon:sqIcon(col,sz)}).addTo(jpqLayer)
+       .bindPopup(`<b>${name}</b><br>M${magStr}${sep}${Lm} ${depStr}${shindo?sep+Li+' '+shindo:''}<br>${at}`+
+         `<br><a href="${eurl}" target="_blank" rel="noopener" style="color:${C.blue}">${Llink}</a>`+
+         `<br><span style="color:#6B7280">気象庁 JMA</span>`);
+      n++;
+    });
+    return n;
+  }
+  async function loadJapanQuakesP2P(){
+    const d=await getJSON('https://api.p2pquake.net/v2/history?codes=551&limit=100');
+    jpqLayer.clearLayers(); let n=0;
+    (Array.isArray(d)?d:[]).forEach(ev=>{
+      const eq=ev.earthquake; if(!eq||!eq.hypocenter)return;
+      const h=eq.hypocenter, la=h.latitude, lo=h.longitude, mag=h.magnitude, dep=h.depth;
+      if(la==null||lo==null||la<-90||la>90||lo< -180||lo>180||la===-200||lo===-200)return;
+      const col=depthCol(dep>=0?dep:0), sz=Math.max(7,Math.min(20,(mag>0?mag:3)*3));
+      const tsu=eq.domesticTsunami&&/Warning|Watch/.test(eq.domesticTsunami);
+      L.marker([la,PL(lo)],{icon:sqIcon(col,sz)}).addTo(jpqLayer)
+       .bindPopup(`<b>${h.name||'震源'} · 震度${shindoP2P(eq.maxScale)}</b><br>`+
+         `M${mag>0?mag.toFixed(1):'—'} · 深さ ${dep>=0?dep+' km':'—'}<br>${eq.time||''}`+
+         (tsu?`<br><span style="color:${C.red}">⚠ 津波 ${eq.domesticTsunami}</span>`:'')+
+         `<br><span style="color:#6B7280">気象庁 (JMA) · P2P地震情報</span>`);
+      n++;
+    });
+    return n;
+  }
   async function loadJapanQuakes(){
-    try{
-      const d=await getJSON('https://api.p2pquake.net/v2/history?codes=551&limit=100');
-      jpqLayer.clearLayers(); let n=0;
-      (Array.isArray(d)?d:[]).forEach(ev=>{
-        const eq=ev.earthquake; if(!eq||!eq.hypocenter)return;
-        const h=eq.hypocenter, la=h.latitude, lo=h.longitude, mag=h.magnitude, dep=h.depth;
-        if(la==null||lo==null||la<-90||la>90||lo< -180||lo>180||la===-200||lo===-200)return;
-        const col=depthCol(dep>=0?dep:0), sz=Math.max(7,Math.min(20,(mag>0?mag:3)*3));
-        const tsu=eq.domesticTsunami&&/Warning|Watch/.test(eq.domesticTsunami);
-        L.marker([la,PL(lo)],{icon:sqIcon(col,sz)}).addTo(jpqLayer)
-         .bindPopup(`<b>${h.name||'震源'} · 震度${shindo(eq.maxScale)}</b><br>`+
-           `M${mag>0?mag.toFixed(1):'—'} · 深さ ${dep>=0?dep+' km':'—'}<br>${eq.time||''}`+
-           (tsu?`<br><span style="color:${C.red}">⚠ 津波 ${eq.domesticTsunami}</span>`:'')+
-           `<br><span style="color:#6B7280">気象庁 (JMA) · 防災 / P2P地震情報</span>`);
-        n++;
-      });
-      return n;
-    }catch(e){ return 0; }
+    try{ const n=await loadJapanQuakesJMA(); if(n>0) return n; }catch(e){}
+    try{ return await loadJapanQuakesP2P(); }catch(e){ return 0; }
   }
 
   // Jアラート-class tsunami warnings — JMA 防災 (津波予報) via P2P地震情報, code 552.
@@ -507,7 +555,7 @@ if(typeof L==='undefined'){
     }catch(e){ setStatus(t('stAircraftErr',{e:e.message})); }
   }
 
-  L.control.layers(null,{
+  const layerCtl = L.control.layers(null,{
     [t('lyGrid')]:gridLayer,
     [t('lyIDL')]:idlLayer,
     [t('lyVolc')]:volcLayer,
@@ -518,7 +566,19 @@ if(typeof L==='undefined'){
     [t('lyPlat')]:platformLayer,
     [t('lyCity')]:cityLayer,
     [t('lyPlane')]:planeLayer
-  },{collapsed:window.matchMedia('(max-width:620px)').matches}).addTo(map);
+  },{collapsed:false}).addTo(map);
+  // Collapsible header so the layers panel can be closed/opened (matches Framing/Legend)
+  (function(){
+    const lc=layerCtl.getContainer(); if(!lc) return;
+    const hdr=document.createElement('div'); hdr.className='lyr-hdr';
+    hdr.innerHTML='<span>'+t('lyrHdr')+'</span><span class="cev">▾</span>';
+    lc.insertBefore(hdr, lc.firstChild);
+    const cev=hdr.querySelector('.cev');
+    const sync=()=>{ cev.textContent=lc.classList.contains('lyr-min')?'▸':'▾'; };
+    L.DomEvent.on(hdr,'click',ev=>{ L.DomEvent.stop(ev); lc.classList.toggle('lyr-min'); sync(); });
+    if(window.matchMedia('(max-width:620px)').matches) lc.classList.add('lyr-min');
+    sync();
+  })();
 
   // default-on layers
   [gridLayer,idlLayer,volcLayer,quakeLayer,jpqLayer,rofLayer,buoyLayer,platformLayer,cityLayer].forEach(l=>l.addTo(map));
