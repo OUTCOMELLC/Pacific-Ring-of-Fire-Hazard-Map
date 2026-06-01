@@ -34,7 +34,7 @@
     font-family:var(--mono);font-size:13px;color:var(--muted);line-height:1.7;}
 
   /* honest framing banner */
-  .frame{position:absolute;top:12px;left:12px;z-index:600;max-width:330px;background:rgba(11,15,25,.92);
+  .frame{position:absolute;top:12px;left:12px;z-index:600;max-width:330px;background:rgba(11,15,25,.985);
     border:1px solid var(--border);border-left:3px solid var(--orange);padding:11px 13px;font-size:11.5px;color:#B8C0CE;line-height:1.5;}
   .frame b{color:var(--orange);font-weight:600}
   .frame .m{font-family:var(--mono);font-size:10px;color:var(--muted);display:block;margin-top:6px;}
@@ -43,7 +43,7 @@
   /* Jアラート-class tsunami banner */
   .jalert{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:650;
     font-family:var(--mono);font-size:11.5px;padding:7px 15px;border:1px solid var(--border);
-    background:rgba(11,15,25,.93);color:var(--muted);max-width:min(640px,70%);text-align:center;line-height:1.5;}
+    background:rgba(11,15,25,.985);color:var(--muted);max-width:min(640px,70%);text-align:center;line-height:1.5;}
   .jalert b{color:var(--orange);font-weight:600;}
   .jalert.watch{border-color:var(--amber);color:#fff;background:rgba(40,28,4,.96);}
   .jalert.watch b{color:var(--amber);}
@@ -53,24 +53,34 @@
   @media(max-width:620px){.jalert{max-width:88%;font-size:10.5px;top:8px;}}
 
   /* legend */
-  .legend{position:absolute;bottom:14px;left:12px;z-index:600;background:rgba(11,15,25,.92);border:1px solid var(--border);
+  .legend{position:absolute;bottom:14px;left:12px;z-index:600;background:rgba(11,15,25,.985);border:1px solid var(--border);
     padding:11px 13px;font-family:var(--mono);font-size:10.5px;color:#C7CEDB;line-height:1.7;}
   .legend h4{font-size:9px;letter-spacing:.18em;color:var(--muted);margin-bottom:7px;text-transform:uppercase;}
   .legend .row{display:flex;align-items:center;gap:8px;}
   .legend .sw{width:11px;height:11px;border-radius:50%;flex:none;}
   .legend .tri{width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;}
 
+  /* collapsible panels (frame + legend) */
+  .ptoggle{cursor:pointer;font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--muted);display:flex;align-items:center;gap:7px;user-select:none;-webkit-user-select:none;}
+  .ptoggle .cev{color:var(--orange);transition:transform .2s;display:inline-block;}
+  .frame:not(.collapsed) .ptoggle .cev,.legend:not(.collapsed) .ptoggle .cev{transform:rotate(90deg);}
+  .frame.collapsed .pbody,.legend.collapsed .pbody{display:none;}
+  .frame .pbody{margin-top:8px;}
+  .legend .pbody{margin-top:9px;}
+
   /* mobile: shrink overlays so the map is visible */
   @media(max-width:620px){
-    header{padding:9px 12px;gap:8px;}
-    .mark{height:20px;margin-right:10px;}
-    h1{font-size:14px;} h1 .s{font-size:8px;letter-spacing:.1em;margin-top:4px;}
-    #status{font-size:9.5px;}
-    button.rf{padding:6px 9px;font-size:10px;}
+    header{padding:8px 11px;gap:6px 10px;}
+    .mark{height:17px;margin-right:8px;box-shadow:11px 0 0 var(--red);}
+    h1{font-size:13px;} h1 .s{display:none;}
+    #status{font-size:9px;margin-left:auto;}
+    button.rf{padding:5px 8px;font-size:9.5px;}
     .nav{font-size:9.5px;width:100%;order:5;gap:3px;}
     .nav a{padding:5px 8px;}
-    .frame{max-width:62%;font-size:9.5px;padding:7px 9px;line-height:1.4;top:8px;left:8px;}
+    .frame{max-width:60%;font-size:9px;padding:7px 9px;line-height:1.4;top:46px;left:8px;}
     .frame .m{font-size:8px;margin-top:4px;}
+    .jalert{top:8px;font-size:10px;padding:6px 11px;}
     .legend{font-size:8.5px;padding:7px 9px;bottom:8px;left:8px;line-height:1.45;}
     .legend h4{font-size:7.5px;margin-bottom:4px;}
     .legend .sw{width:9px;height:9px;}
@@ -83,7 +93,7 @@
   .leaflet-popup-content{font-family:var(--mono);font-size:11.5px;line-height:1.6;margin:11px 13px;}
   .leaflet-popup-content b{font-family:var(--disp);font-size:13px;}
   .leaflet-popup-content a{color:var(--blue);}
-  .leaflet-control-layers{background:rgba(11,15,25,.94);color:var(--text);border:1px solid var(--border);border-radius:0;font-family:var(--mono);font-size:12px;}
+  .leaflet-control-layers{background:rgba(11,15,25,.985);color:var(--text);border:1px solid var(--border);border-radius:0;font-family:var(--mono);font-size:12px;}
   .leaflet-control-layers-expanded{padding:11px 13px;}
   .leaflet-control-layers label{margin:5px 0;display:flex;align-items:center;gap:7px;}
   .leaflet-control-zoom a{background:var(--panel);color:var(--text);border:1px solid var(--border);}
@@ -109,25 +119,34 @@
 <div id="wrap">
   <div id="map"></div>
   <div class="jalert" id="jalert">🌊 <b>Jアラート級 津波</b> — 取得中… <span style="color:var(--dim)">(JMA防災 / P2P)</span></div>
-  <div class="frame" id="frame">
-    <span class="x" onclick="document.getElementById('frame').style.display='none'">✕</span>
-    <b>Geophysical, not weather.</b> Volcanoes &amp; earthquakes don't forecast storms — but a large undersea quake <b>is</b> a real tsunami precursor. This is the Earth · Fire hazard layer.
-    <span class="m">Hawaii volcanoes are a hotspot (purple), not Ring-of-Fire subduction. Ring outline is schematic. Buoys ◇ approx (NOWPHAS/JMA). Oil platforms (🛢) are exposure — assets a hazard can threaten, not a cause. Santa Barbara's seep is natural geology, not drilling.</span>
+  <div class="frame collapsed" id="frame">
+    <div class="ptoggle" onclick="togglePanel('frame')">ℹ︎ Framing <span class="cev">▸</span></div>
+    <div class="pbody">
+      <b>Geophysical, not weather.</b> Volcanoes &amp; earthquakes don't forecast storms — but a large undersea quake <b>is</b> a real tsunami precursor. This is the Earth · Fire hazard layer.
+      <span class="m">Hawaii volcanoes are a hotspot (purple), not Ring-of-Fire subduction. Ring outline is schematic. Buoys ◇ approx (NOWPHAS/JMA). Oil platforms (🛢) are exposure — assets a hazard can threaten, not a cause. Santa Barbara's seep is natural geology, not drilling.</span>
+    </div>
   </div>
-  <div class="legend" id="legend">
-    <h4>Legend</h4>
-    <div class="row"><span class="tri" style="border-bottom:11px solid var(--orange)"></span> active volcano</div>
-    <div class="row"><span class="tri" style="border-bottom:11px solid var(--purple)"></span> hotspot volcano (Hawaii)</div>
-    <div class="row"><span class="tri" style="border-bottom:11px solid var(--red)"></span> elevated / erupting (live)</div>
-    <div class="row"><span class="sw" style="background:var(--red)"></span> quake &lt;70 km (shallow)</div>
-    <div class="row"><span class="sw" style="background:var(--amber)"></span> quake 70–300 km</div>
-    <div class="row"><span class="sw" style="background:var(--blue)"></span> quake &gt;300 km (deep)</div>
-    <div class="row" style="color:var(--muted)">○ size ∝ magnitude · ◎ tsunami flag · ▪ JMA 防災 (Japan)</div>
+  <div class="legend collapsed" id="legend">
+    <div class="ptoggle" onclick="togglePanel('legend')">Legend <span class="cev">▸</span></div>
+    <div class="pbody">
+      <div class="row"><span class="tri" style="border-bottom:11px solid var(--orange)"></span> active volcano</div>
+      <div class="row"><span class="tri" style="border-bottom:11px solid var(--purple)"></span> hotspot volcano (Hawaii)</div>
+      <div class="row"><span class="tri" style="border-bottom:11px solid var(--red)"></span> elevated / erupting (live)</div>
+      <div class="row"><span class="sw" style="background:var(--red)"></span> quake &lt;70 km (shallow)</div>
+      <div class="row"><span class="sw" style="background:var(--amber)"></span> quake 70–300 km</div>
+      <div class="row"><span class="sw" style="background:var(--blue)"></span> quake &gt;300 km (deep)</div>
+      <div class="row" style="color:var(--muted)">○ size ∝ magnitude · ◎ tsunami flag · ▪ JMA 防災 (Japan)</div>
+    </div>
   </div>
 </div>
 
 <script>
 const C={orange:'#FB8102',blue:'#3B82F6',green:'#22C55E',amber:'#F59E0B',red:'#EF4444',purple:'#A855F7',teal:'#2DD4BF',dim:'#475569'};
+// collapsible info panels — collapsed by default (mobile), auto-expanded on wider screens
+function togglePanel(id){var e=document.getElementById(id); if(e) e.classList.toggle('collapsed');}
+if(!window.matchMedia('(max-width:620px)').matches){
+  ['frame','legend'].forEach(id=>{var e=document.getElementById(id); if(e) e.classList.remove('collapsed');});
+}
 // Pacific-continuous longitude: shift western-Pacific (E) lons by -360 so the whole rim is one
 // unbroken span (~ -240 .. -66) centered on Hawaii. Stops the antimeridian streak across the USA.
 const PL=lo=>lo>20?lo-360:lo;
@@ -435,7 +454,7 @@ if(typeof L==='undefined'){
       el.innerHTML='🚨 '+parts.join(' ／ ')+` <span style="color:var(--dim)">· ${rec.issue&&rec.issue.time?rec.issue.time:''} JMA防災/P2P</span>`;
     }).catch(()=>{
       el.className='jalert';
-      el.innerHTML='🌊 <b>Jアラート級 津波</b>: feed unavailable — host over https <span style="color:var(--dim)">(JMA防災/P2P)</span>';
+      el.innerHTML='🌊 <b>Jアラート級 津波</b>: feed offline <span style="color:var(--dim)">(needs https)</span>';
     });
   }
   async function loadPlanes(){
@@ -467,7 +486,7 @@ if(typeof L==='undefined'){
     '🛢 Offshore platforms (exposure)':platformLayer,
     '📍 Focus cities':cityLayer,
     '✈ Aircraft (live ADS-B · airplanes.live)':planeLayer
-  },{collapsed:false}).addTo(map);
+  },{collapsed:window.matchMedia('(max-width:620px)').matches}).addTo(map);
 
   // default-on layers
   [gridLayer,idlLayer,volcLayer,quakeLayer,jpqLayer,rofLayer,buoyLayer,platformLayer,cityLayer].forEach(l=>l.addTo(map));
