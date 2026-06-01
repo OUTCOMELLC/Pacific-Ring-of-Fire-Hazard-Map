@@ -284,8 +284,8 @@ const LOCATIONS = [
   { id:'tb', name:'Tokyo Bay', sub:'Haneda HND · 大田区 Ōta', lat:35.549, lon:139.779, tz:'Asia/Tokyo', fog:true,
     mLat:35.45, mLon:139.88, tide:null, tideName:null,
     volc:[] },
-  { id:'ho', name:'Honshu', sub:'Tokyo · 東京', lat:35.68, lon:139.69, tz:'Asia/Tokyo',
-    mLat:35.10, mLon:140.30, tide:null, tideName:null,
+  { id:'ot', name:'Ōta-ku Senzoku', sub:'大田区 洗足 · Tokyo', lat:35.603, lon:139.696, tz:'Asia/Tokyo',
+    mLat:35.55, mLon:139.86, tide:null, tideName:null,
     volc:[{n:'Mt. Fuji 富士山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_4.html'},
           {n:'Asama 浅間山',u:'https://www.data.jma.go.jp/vois/data/tokyo/STOCK/activity_info/map_3.html'}] },
   { id:'mz', name:'Miyazaki', sub:'宮崎 · Hyūga-nada 日向灘', lat:31.91, lon:131.42, tz:'Asia/Tokyo',
@@ -692,7 +692,7 @@ function renderCard(L, data){
   const fogLink=L.id==='sf'?t('fogSF'):'';
 
   // official watch/warning authority for this city (JMA for Japan, NWS for US)
-  const JMA_OFFICE={hk:'400000',ng:'420000',mz:'450000',ho:'130000',tb:'130000'};
+  const JMA_OFFICE={hk:'400000',ng:'420000',mz:'450000',ot:'130000',tb:'130000'};
   const jo=JMA_OFFICE[L.id]||'010000';
   const verifyLink = L.tz==='Asia/Tokyo'
     ? `<a href="https://www.jma.go.jp/bosai/forecast/#area_type=offices&amp;area_code=${jo}" target="_blank" rel="noopener">JMA 天気予報 ↗</a> · <a href="https://www.jma.go.jp/bosai/warning/#area_type=offices&amp;area_code=${jo}" target="_blank" rel="noopener">気象警報・注意報 ↗</a>`
