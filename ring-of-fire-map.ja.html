@@ -544,19 +544,31 @@ if(typeof L==='undefined'){
   // ===== Typhoons / tropical cyclones — JMA RSMC Tokyo (Western North Pacific) =====
   // Index: bosai/information/data/typhoon.json (active eventIds + report times)
   // Track: bosai/typhoon/data/{eventId}/specifications.json (analysis 実況 + forecast +12/24/45/69h)
-  // Defensive: only entries carrying BOTH a position and a validtime are used, and every
-  // lat/lon is range-checked to the RSMC Tokyo area before drawing; otherwise the layer is empty.
-  const TC_AREA = p => p && p.lat>=0 && p.lat<=65 && p.lon>=95 && p.lon<=185;
-  function tcNum(x){ if(x==null) return null; const v=parseFloat(String(x).replace(/[^0-9.\-]/g,'')); return isFinite(v)?v:null; }
+  // Robust: accepts position.deg as {lat,lon} OR [lat,lon]/[lon,lat] OR N/S/E/W strings; auto-detects
+  // coord order by WNP range (lat<=65, lon>=95 don't overlap); range-checks to RSMC area; empties if unparseable.
+  const TC_AREA = p => p && p.lat>=-5 && p.lat<=65 && p.lon>=95 && p.lon<=185;
+  function tcNum(x){ if(x==null||typeof x==='object') return null; const v=parseFloat(String(x).replace(/[^0-9.\-]/g,'')); return isFinite(v)?v:null; }
+  function tcCoord(x){ if(x==null||typeof x==='object') return null; const s=String(x); let v=parseFloat(s.replace(/[^0-9.\-]/g,'')); if(!isFinite(v)) return null; if(/[SW]/i.test(s)) v=-Math.abs(v); return v; }
+  function tcOrder(a,b){ a=tcCoord(a); b=tcCoord(b); if(a==null||b==null) return null;
+    const aLat=a>=-5&&a<=65, aLon=a>=95&&a<=185, bLat=b>=-5&&b<=65, bLon=b>=95&&b<=185;
+    if(aLat&&bLon) return {lat:a,lon:b}; if(bLat&&aLon) return {lat:b,lon:a}; return null; }
   function tcText(v){ if(v==null) return ''; if(typeof v==='string') return v;
-    if(typeof v==='object') return LANG==='ja'?(v.ja||v.text||v.en||''):(v.en||v.text||v.ja||''); return String(v); }
+    if(typeof v==='object') return LANG==='ja'?(v.ja||v.text||v.en||v.name||''):(v.en||v.text||v.ja||v.name||''); return String(v); }
+  function tcVt(node){ let v=node.validtime||node.validTime||node.dateTime||node.datetime||node.date||node.time||null;
+    if(v&&typeof v==='object') v=v.DateTime||v.dateTime||v.text||v.value||v.jst||null; return (typeof v==='string')?v:null; }
   function tcReadPos(o){
     if(!o||typeof o!=='object') return null;
-    const d = o.deg || o.degree || (o.position && (o.position.deg||o.position.degree)) || null;
-    if(!d || typeof d!=='object' || Array.isArray(d)) return null;   // skip arrays (ambiguous order)
-    const lat=tcNum(d.lat!=null?d.lat:d.latitude), lon=tcNum(d.lon!=null?d.lon:(d.lng!=null?d.lng:d.longitude));
+    const p = o.position || o.center || o.centre || o;
+    let d = (p && (p.deg||p.degree||p.latlon||p.latLon)) || o.deg || o.degree || null;
+    let lat=null, lon=null;
+    if(Array.isArray(d) && d.length>=2){ const r=tcOrder(d[0],d[1]); if(r){ lat=r.lat; lon=r.lon; } }
+    else if(d && typeof d==='object'){ lat=tcCoord(d.lat!=null?d.lat:d.latitude); lon=tcCoord(d.lon!=null?d.lon:(d.lng!=null?d.lng:d.longitude)); }
+    if((lat==null||lon==null) && p && typeof p==='object' && !Array.isArray(p)){
+      const la=(p.lat!=null?p.lat:p.latitude), lo=(p.lon!=null?p.lon:(p.lng!=null?p.lng:p.longitude));
+      if(la!=null||lo!=null){ lat=tcCoord(la); lon=tcCoord(lo); }
+    }
     if(lat==null||lon==null) return null;
-    const p={lat,lon}; return TC_AREA(p)?p:null;
+    const pos={lat,lon}; return TC_AREA(pos)?pos:null;
   }
   function extractTyphoonPoints(spec){
     const out=[], seen=new Set();
@@ -564,29 +576,38 @@ if(typeof L==='undefined'){
       if(!node) return;
       if(Array.isArray(node)){ node.forEach(walk); return; }
       if(typeof node!=='object') return;
-      const pos=tcReadPos(node), vt=node.validtime||node.validTime||node.dateTime||null;
-      if(pos && vt){
-        const key=vt+'|'+pos.lat+'|'+pos.lon;
-        if(!seen.has(key)){
-          seen.add(key);
-          const mw=node.maximumWind||node.maximumwind||{}, sus=mw.sustained||{};
-          out.push({ lat:pos.lat, lon:pos.lon, vt:vt,
-            pressure:tcNum(node.pressure!=null?node.pressure:node.centralPressure),
-            kt:tcNum(sus.kt), ms:tcNum(sus['m/s']!=null?sus['m/s']:sus.ms),
-            intensity:tcText(node.intensity), scale:tcText(node.scale),
-            course:tcText(node.course), speed:tcText(node.speed), location:tcText(node.location),
-            gale:(node.galeWarning&&node.galeWarning.range)?tcNum(node.galeWarning.range.km):null,
-            storm:(node.stormWarning&&node.stormWarning.range)?tcNum(node.stormWarning.range.km):null });
+      const hasLatLon=(node.lat!=null&&(node.lon!=null||node.lng!=null))||(node.latitude!=null&&node.longitude!=null);
+      const posLoc=('position' in node)||('deg' in node)||('center' in node)||('centre' in node)||hasLatLon;
+      const meta=tcVt(node)||node.pressure!=null||node.maximumWind||node.maximumwind||node.intensity||node.course||node.speed||node.scale||node.location;
+      const isEntry=posLoc && meta;  // a bare position/deg container (no time/meta) is NOT a track point
+      if(isEntry){
+        const pos=tcReadPos(node);
+        if(pos){
+          const vt=tcVt(node), key=(vt||'')+'|'+pos.lat.toFixed(2)+'|'+pos.lon.toFixed(2);
+          if(!seen.has(key)){
+            seen.add(key);
+            const mw=node.maximumWind||node.maximumwind||node.maxWind||{}, sus=mw.sustained||mw.Sustained||{};
+            out.push({ lat:pos.lat, lon:pos.lon, vt:vt,
+              pressure:tcNum(node.pressure!=null?node.pressure:node.centralPressure),
+              kt:tcNum(sus.kt), ms:tcNum(sus['m/s']!=null?sus['m/s']:sus.ms),
+              intensity:tcText(node.intensity), scale:tcText(node.scale),
+              course:tcText(node.course), speed:tcText(node.speed), location:tcText(node.location),
+              gale:(node.galeWarning&&node.galeWarning.range)?tcNum(node.galeWarning.range.km):null,
+              storm:(node.stormWarning&&node.stormWarning.range)?tcNum(node.stormWarning.range.km):null });
+          }
         }
       }
       for(const k in node){ const v=node[k]; if(v&&typeof v==='object') walk(v); }
     })(spec);
-    out.sort((a,b)=> a.vt<b.vt?-1:a.vt>b.vt?1:0);
-    return out;
+    const withVt=out.filter(p=>p.vt).sort((a,b)=> a.vt<b.vt?-1:a.vt>b.vt?1:0);
+    return withVt.concat(out.filter(p=>!p.vt));
   }
   function tcName(spec,id){ let nm=null;
-    (function look(n,d){ if(nm||!n||d>4) return; if(typeof n==='object'){ if(n.name){nm=n.name;return;} for(const k in n){ if(n[k]&&typeof n[k]==='object') look(n[k],d+1); } } })(spec,0);
-    return tcText(nm)||id;
+    (function look(n,d){ if(nm||!n||d>5) return; if(Array.isArray(n)){ n.forEach(x=>look(x,d+1)); return; }
+      if(typeof n==='object'){ if(n.name){nm=n.name;return;} for(const k in n){ if(n[k]&&typeof n[k]==='object') look(n[k],d+1); } } })(spec,0);
+    const t=tcText(nm), num=(String(id||'').match(/(\d{2})$/)||[])[1];
+    const numLabel=num?(LANG==='ja'?('台風'+parseInt(num,10)+'号'):LANG==='es'?('Tifón n.º '+parseInt(num,10)):('Typhoon No. '+parseInt(num,10))):(id||'');
+    return t?(t+(num?' · '+numLabel:'')):numLabel;
   }
   function tcColor(kt){ return kt==null?C.pink:(kt>=64?'#D6336C':kt>=34?C.pink:'#F472B6'); }
   function tcPopup(name,p,isCur){
