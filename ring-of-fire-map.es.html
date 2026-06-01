@@ -148,13 +148,14 @@
       <div class="row"><span class="sw" style="background:var(--red)"></span> <span data-i18n="legQs">quake &lt;70 km (shallow)</span></div>
       <div class="row"><span class="sw" style="background:var(--amber)"></span> <span data-i18n="legQm">quake 70–300 km</span></div>
       <div class="row"><span class="sw" style="background:var(--blue)"></span> <span data-i18n="legQd">quake &gt;300 km (deep)</span></div>
+      <div class="row"><span style="color:#EC4899">🌀</span> <span data-i18n="legTyph">typhoon track + forecast (JMA, W. Pacific)</span></div>
       <div class="row" style="color:var(--muted)" data-i18n="legNote">○ size ∝ magnitude · ◎ tsunami flag · ▪ JMA 防災 (Japan)</div>
     </div>
   </div>
 </div>
 
 <script>
-const C={orange:'#FB8102',blue:'#3B82F6',green:'#22C55E',amber:'#F59E0B',red:'#EF4444',purple:'#A855F7',teal:'#2DD4BF',dim:'#475569'};
+const C={orange:'#FB8102',blue:'#3B82F6',green:'#22C55E',amber:'#F59E0B',red:'#EF4444',purple:'#A855F7',teal:'#2DD4BF',dim:'#475569',pink:'#EC4899'};
 /* ===== i18n — LANG fixed per file (en here; ja in the .ja.html copy) ===== */
 const LANG='es';
 const T={
@@ -179,6 +180,8 @@ const T={
   nolf:{en:'Map library (Leaflet) could not load — you appear to be offline or in a sandbox that blocks the CDN.<br>Download this file and open it in a normal browser, or host it over https://.',ja:'地図ライブラリ（Leaflet）を読み込めませんでした — オフライン、またはCDNを遮断する環境のようです。<br>このファイルをダウンロードして通常のブラウザで開くか、https:// でホストしてください。'},
   lyGrid:{en:'▦ Lat/Lon grid',ja:'▦ 緯度経度グリッド'},lyIDL:{en:'🕒 Int’l Date Line',ja:'🕒 日付変更線'},lyVolc:{en:'🌋 Active volcanoes',ja:'🌋 活火山'},lyQuake:{en:'◉ Seismicity (USGS live)',ja:'◉ 地震活動（USGSライブ）'},lyJpq:{en:'🗾 Japan quakes (JMA 防災)',ja:'🗾 日本の地震（JMA防災）'},lyRof:{en:'➰ Ring of Fire (schematic)',ja:'➰ 環太平洋火山帯（模式）'},lyBuoy:{en:'🛟 Buoy network',ja:'🛟 ブイ網'},lyPlat:{en:'🛢 Offshore platforms (exposure)',ja:'🛢 洋上プラットフォーム（曝露）'},lyCity:{en:'📍 Focus cities',ja:'📍 注目都市'},lyPlane:{en:'✈ Aircraft (live ADS-B · airplanes.live)',ja:'✈ 航空機（ライブADS-B ・ airplanes.live）'},
   lyrHdr:{en:'🗂 Map layers',ja:'🗂 地図レイヤー'},
+  lyTyph:{en:'🌀 Typhoons (JMA RSMC)',ja:'🌀 台風（JMA RSMC）'},
+  legTyph:{en:'🌀 typhoon track + forecast (JMA, W. Pacific)',ja:'🌀 台風の経路＋予報（JMA・西太平洋）'},
 };
 function t(k,v){ let s=(T[k]&&(T[k][LANG]||T[k].en))||k; if(v) for(const x in v) s=s.replace('{'+x+'}',v[x]); return s; }
 const ES={
@@ -203,6 +206,8 @@ const ES={
   nolf:'No se pudo cargar la biblioteca de mapas (Leaflet) — pareces estar sin conexión o en un entorno que bloquea el CDN.<br>Descarga este archivo y ábrelo en un navegador normal, o aloja sobre https://.',
   lyGrid:'▦ Cuadrícula lat/lon',lyIDL:'🕒 Línea de cambio de fecha',lyVolc:'🌋 Volcanes activos',lyQuake:'◉ Sismicidad (USGS en vivo)',lyJpq:'🗾 Sismos de Japón (JMA 防災)',lyRof:'➰ Cinturón de Fuego (esquemático)',lyBuoy:'🛟 Red de boyas',lyPlat:'🛢 Plataformas marinas (exposición)',lyCity:'📍 Ciudades destacadas',lyPlane:'✈ Aeronaves (ADS-B en vivo · airplanes.live)',
   lyrHdr:'🗂 Capas del mapa',
+  lyTyph:'🌀 Tifones (JMA RSMC)',
+  legTyph:'🌀 trayectoria + pronóstico de tifón (JMA, Pac. occ.)',
 };
 Object.keys(ES).forEach(k=>{ if(T[k]) T[k].es=ES[k]; else T[k]={en:ES[k],ja:ES[k],es:ES[k]}; });
 function applyChrome(){ document.documentElement.lang=LANG; document.querySelectorAll('[data-i18n]').forEach(el=>{ el.innerHTML=t(el.dataset.i18n); }); }
@@ -358,7 +363,7 @@ if(typeof L==='undefined'){
     html:`<div style="transform:rotate(${(h||0)-45}deg);font-size:13px;color:${C.teal};text-shadow:0 0 2px #000">✈</div>`});
 
   const volcLayer=L.layerGroup(), quakeLayer=L.layerGroup(), rofLayer=L.layerGroup(),
-        buoyLayer=L.layerGroup(), cityLayer=L.layerGroup(), planeLayer=L.layerGroup(), platformLayer=L.layerGroup(), gridLayer=L.layerGroup(), idlLayer=L.layerGroup(), jpqLayer=L.layerGroup();
+        buoyLayer=L.layerGroup(), cityLayer=L.layerGroup(), planeLayer=L.layerGroup(), platformLayer=L.layerGroup(), gridLayer=L.layerGroup(), idlLayer=L.layerGroup(), jpqLayer=L.layerGroup(), typhoonLayer=L.layerGroup();
 
   // Ring of Fire schematic
   L.polyline(ROF.map(p=>[p[0],PL(p[1])]),{color:C.orange,weight:1.5,dashArray:'7 7',opacity:.55}).addTo(rofLayer);
@@ -536,6 +541,105 @@ if(typeof L==='undefined'){
     try{ return await loadJapanQuakesP2P(); }catch(e){ return 0; }
   }
 
+  // ===== Typhoons / tropical cyclones — JMA RSMC Tokyo (Western North Pacific) =====
+  // Index: bosai/information/data/typhoon.json (active eventIds + report times)
+  // Track: bosai/typhoon/data/{eventId}/specifications.json (analysis 実況 + forecast +12/24/45/69h)
+  // Defensive: only entries carrying BOTH a position and a validtime are used, and every
+  // lat/lon is range-checked to the RSMC Tokyo area before drawing; otherwise the layer is empty.
+  const TC_AREA = p => p && p.lat>=0 && p.lat<=65 && p.lon>=95 && p.lon<=185;
+  function tcNum(x){ if(x==null) return null; const v=parseFloat(String(x).replace(/[^0-9.\-]/g,'')); return isFinite(v)?v:null; }
+  function tcText(v){ if(v==null) return ''; if(typeof v==='string') return v;
+    if(typeof v==='object') return LANG==='ja'?(v.ja||v.text||v.en||''):(v.en||v.text||v.ja||''); return String(v); }
+  function tcReadPos(o){
+    if(!o||typeof o!=='object') return null;
+    const d = o.deg || o.degree || (o.position && (o.position.deg||o.position.degree)) || null;
+    if(!d || typeof d!=='object' || Array.isArray(d)) return null;   // skip arrays (ambiguous order)
+    const lat=tcNum(d.lat!=null?d.lat:d.latitude), lon=tcNum(d.lon!=null?d.lon:(d.lng!=null?d.lng:d.longitude));
+    if(lat==null||lon==null) return null;
+    const p={lat,lon}; return TC_AREA(p)?p:null;
+  }
+  function extractTyphoonPoints(spec){
+    const out=[], seen=new Set();
+    (function walk(node){
+      if(!node) return;
+      if(Array.isArray(node)){ node.forEach(walk); return; }
+      if(typeof node!=='object') return;
+      const pos=tcReadPos(node), vt=node.validtime||node.validTime||node.dateTime||null;
+      if(pos && vt){
+        const key=vt+'|'+pos.lat+'|'+pos.lon;
+        if(!seen.has(key)){
+          seen.add(key);
+          const mw=node.maximumWind||node.maximumwind||{}, sus=mw.sustained||{};
+          out.push({ lat:pos.lat, lon:pos.lon, vt:vt,
+            pressure:tcNum(node.pressure!=null?node.pressure:node.centralPressure),
+            kt:tcNum(sus.kt), ms:tcNum(sus['m/s']!=null?sus['m/s']:sus.ms),
+            intensity:tcText(node.intensity), scale:tcText(node.scale),
+            course:tcText(node.course), speed:tcText(node.speed), location:tcText(node.location),
+            gale:(node.galeWarning&&node.galeWarning.range)?tcNum(node.galeWarning.range.km):null,
+            storm:(node.stormWarning&&node.stormWarning.range)?tcNum(node.stormWarning.range.km):null });
+        }
+      }
+      for(const k in node){ const v=node[k]; if(v&&typeof v==='object') walk(v); }
+    })(spec);
+    out.sort((a,b)=> a.vt<b.vt?-1:a.vt>b.vt?1:0);
+    return out;
+  }
+  function tcName(spec,id){ let nm=null;
+    (function look(n,d){ if(nm||!n||d>4) return; if(typeof n==='object'){ if(n.name){nm=n.name;return;} for(const k in n){ if(n[k]&&typeof n[k]==='object') look(n[k],d+1); } } })(spec,0);
+    return tcText(nm)||id;
+  }
+  function tcColor(kt){ return kt==null?C.pink:(kt>=64?'#D6336C':kt>=34?C.pink:'#F472B6'); }
+  function tcPopup(name,p,isCur){
+    const Lpos=LANG==='ja'?'位置':LANG==='es'?'posición':'position',
+          Lpr=LANG==='ja'?'中心気圧':LANG==='es'?'presión':'pressure',
+          Lwd=LANG==='ja'?'最大風速':LANG==='es'?'viento máx.':'max wind',
+          Lin=LANG==='ja'?'強さ':LANG==='es'?'intensidad':'intensity',
+          Lsz=LANG==='ja'?'大きさ':LANG==='es'?'tamaño':'size',
+          Lmv=LANG==='ja'?'進行':LANG==='es'?'movimiento':'movement',
+          Lfc=LANG==='ja'?'予報':LANG==='es'?'pronóstico':'forecast',
+          Llk=LANG==='ja'?'気象庁 台風情報 →':LANG==='es'?'info de tifones JMA →':'JMA typhoon info →';
+    const vt=p.vt?String(p.vt).slice(0,16).replace('T',' '):'';
+    const L=[]; L.push('<b>🌀 '+name+'</b>'+(isCur?'':' <span style="color:'+C.dim+'">('+Lfc+')</span>'));
+    if(vt) L.push(vt);
+    const isc=[p.intensity?Lin+' '+p.intensity:'',p.scale?Lsz+' '+p.scale:''].filter(Boolean).join(' · '); if(isc) L.push(isc);
+    if(p.pressure!=null) L.push(Lpr+' '+p.pressure+' hPa');
+    if(p.kt!=null||p.ms!=null) L.push(Lwd+' '+(p.ms!=null?p.ms+' m/s':'')+(p.ms!=null&&p.kt!=null?' / ':'')+(p.kt!=null?p.kt+' kt':''));
+    if(isCur&&(p.course||p.speed)) L.push(Lmv+' '+[p.course,p.speed].filter(Boolean).join(' '));
+    L.push('<span style="color:'+C.dim+'">'+Lpos+': '+p.lat.toFixed(1)+'°N '+p.lon.toFixed(1)+'°E</span>');
+    L.push('<a href="https://www.jma.go.jp/bosai/map.html#5/'+p.lat.toFixed(2)+'/'+p.lon.toFixed(2)+'/&contents=typhoon" target="_blank" rel="noopener" style="color:'+C.blue+'">'+Llk+'</a>');
+    L.push('<span style="color:#6B7280">気象庁 JMA · RSMC Tokyo</span>');
+    return L.join('<br>');
+  }
+  function drawTyphoon(id,name,pts){
+    if(!pts.length) return; const cur=pts[0];
+    const latlngs=pts.map(p=>[p.lat,PL(p.lon)]);
+    if(latlngs.length>1) L.polyline(latlngs,{color:C.pink,weight:2,dashArray:'5,5',opacity:.85}).addTo(typhoonLayer);
+    if(cur.gale)  L.circle([cur.lat,PL(cur.lon)],{radius:cur.gale*1000,color:C.pink,weight:1,fillColor:C.pink,fillOpacity:.06,opacity:.4}).addTo(typhoonLayer);
+    if(cur.storm) L.circle([cur.lat,PL(cur.lon)],{radius:cur.storm*1000,color:'#D6336C',weight:1,fillColor:'#D6336C',fillOpacity:.10,opacity:.5}).addTo(typhoonLayer);
+    pts.slice(1).forEach(p=>{
+      L.circleMarker([p.lat,PL(p.lon)],{radius:4,color:C.pink,weight:1.5,fillColor:'#0B0F19',fillOpacity:1}).addTo(typhoonLayer).bindPopup(tcPopup(name,p,false));
+    });
+    const sz=cur.kt!=null?Math.max(20,Math.min(40,18+cur.kt/5)):24;
+    L.marker([cur.lat,PL(cur.lon)],{zIndexOffset:1000,icon:L.divIcon({className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],
+      html:'<div style="font-size:'+sz+'px;line-height:1;color:'+tcColor(cur.kt)+';text-shadow:0 0 4px #000,0 0 2px #000">🌀</div>'})}).addTo(typhoonLayer).bindPopup(tcPopup(name,cur,true));
+  }
+  async function loadTyphoons(){
+    typhoonLayer.clearLayers();
+    let idx; try{ idx=await getJSON('https://www.jma.go.jp/bosai/information/data/typhoon.json'); }catch(e){ return 0; }
+    if(!Array.isArray(idx)||!idx.length) return 0;
+    const now=Date.now(), FRESH=36*3600*1000, latest={};
+    idx.forEach(o=>{ if(!o||!o.eventId) return; const tms=Date.parse(o.reportDatetime||o.datetime||''); if(isFinite(tms)) latest[o.eventId]=Math.max(latest[o.eventId]||0,tms); });
+    const ids=Object.keys(latest).filter(id=> now-latest[id] < FRESH);
+    if(!ids.length) return 0;
+    let n=0;
+    await Promise.allSettled(ids.map(async id=>{
+      let spec; try{ spec=await getJSON('https://www.jma.go.jp/bosai/typhoon/data/'+id+'/specifications.json'); }catch(e){ return; }
+      const pts=extractTyphoonPoints(spec);
+      if(pts.length){ drawTyphoon(id, tcName(spec,id), pts); n++; }
+    }));
+    return n;
+  }
+
   // Jアラート-class tsunami warnings — JMA 防災 (津波予報) via P2P地震情報, code 552.
   // (Civil-protection / missile alerts have no public API and are intentionally not shown.)
   function loadTsunami(){
@@ -589,7 +693,8 @@ if(typeof L==='undefined'){
     [t('lyBuoy')]:buoyLayer,
     [t('lyPlat')]:platformLayer,
     [t('lyCity')]:cityLayer,
-    [t('lyPlane')]:planeLayer
+    [t('lyPlane')]:planeLayer,
+    [t('lyTyph')]:typhoonLayer
   },{collapsed:false}).addTo(map);
   // Collapsible header so the layers panel can be closed/opened (matches Framing/Legend)
   (function(){
@@ -605,7 +710,7 @@ if(typeof L==='undefined'){
   })();
 
   // default-on layers
-  [gridLayer,idlLayer,volcLayer,quakeLayer,jpqLayer,rofLayer,buoyLayer,platformLayer,cityLayer].forEach(l=>l.addTo(map));
+  [gridLayer,idlLayer,volcLayer,quakeLayer,jpqLayer,rofLayer,buoyLayer,platformLayer,cityLayer,typhoonLayer].forEach(l=>l.addTo(map));
 
   map.on('overlayadd',e=>{ if(e.layer===planeLayer) loadPlanes(); });
 
@@ -616,6 +721,7 @@ if(typeof L==='undefined'){
     drawVolcanoes(elevated);
     let qn=0; try{ qn=await loadQuakes(); }catch(e){}
     let jn=0; try{ jn=await loadJapanQuakes(); }catch(e){}
+    try{ await loadTyphoons(); }catch(e){}
     loadTsunami();
     loadHisayama();
     if(map.hasLayer(planeLayer)) loadPlanes();
