@@ -278,8 +278,14 @@ const RADIUS_KM = 1200;            // seismicity catchment per location
 const SURF_FLOOD_M = 3.0;          // surf threshold that makes a high tide a flooding concern
 
 const LOCATIONS = [
-  { id:'hk', name:'Hakata Port', sub:'Fukuoka · 博多港', lat:33.61, lon:130.40, tz:'Asia/Tokyo', fog:true,
+  { id:'hk', name:'Hakata Port', sub:'Fukuoka · 博多港', lat:33.61, lon:130.40, tz:'Asia/Tokyo', fog:true, cam:{u:'https://www.youtube.com/watch?v=KUGWooj7awE',l:'TVQ 博多港 live cam'},
     mLat:33.70, mLon:130.30, tide:null, tideName:null,
+    volc:[] },
+  { id:'hs', name:'Hisayama', sub:'久山町 · Fukuoka 福岡', lat:33.613, lon:130.483, tz:'Asia/Tokyo', inland:1,
+    mLat:33.70, mLon:130.30, tide:null, tideName:null,
+    bosai:[ {l:'久山町防災情報', u:'https://www.town.hisayama.fukuoka.jp/gyosei/kurashi/anzen_anshin/bosai/2062.html'},
+            {l:'福岡県 避難情報（久山町）', u:'https://www.bousai.pref.fukuoka.jp/evacuation/kasuya-gun-hisayama-machi/'},
+            {l:'JMA 防災（福岡）', u:'https://www.jma.go.jp/bosai/#area_type=class20s&area_code=4034800'} ],
     volc:[] },
   { id:'tb', name:'Tokyo Bay', sub:'Haneda HND · 大田区 Ōta', lat:35.549, lon:139.779, tz:'Asia/Tokyo', fog:true,
     mLat:35.45, mLon:139.88, tide:null, tideName:null,
@@ -402,6 +408,8 @@ const T={
   spawnSpring:{en:'spring',ja:'大潮'},spawnNeap:{en:'neap',ja:'小潮'},spawnMid:{en:'mid',ja:'中潮'},
   anglerIndep:{en:'Solunar windows are approximate (lunar-transit model) &amp; in local time — peak feeding clusters near them. Spawning cue = spring tide (new/full moon) + water temp in the ~20 °C band: indicative for oysters &amp; many bivalves, not a guarantee.',ja:'ソルナーの時間帯は概算（月の南中モデル）で現地時間です — 摂餌のピークはこの前後に集まります。産卵の目安＝大潮（新月・満月）＋水温が約20℃帯：カキや多くの二枚貝の指標であり、確実ではありません。'},
   geoHead:{en:'Geophysical hazard',ja:'地球物理ハザード'},geoTag:{en:'NOT WEATHER',ja:'気象とは別'},
+  bosaiHead:{en:'Disaster info 防災',ja:'防災情報'},bosaiTag:{en:'OFFICIAL',ja:'公式'},
+  bosaiIndep:{en:'Official town &amp; prefectural disaster-prevention resources for Hisayama — evacuation sites, hazard maps, live advisories.',ja:'久山町・福岡県の公式防災情報 — 避難所・ハザードマップ・避難情報。'},
   kM45:{en:'M4.5+ / 7d',ja:'M4.5以上 / 7日'},within:{en:'within {km} km',ja:'{km} km 以内'},
   tsunamiFlag:{en:'⚠ TSUNAMI FLAG',ja:'⚠ 津波フラグ'},largest:{en:'Largest',ja:'最大'},noneWindow:{en:'none in window',ja:'期間内になし'},
   seismicUnavail:{en:'⚠ seismic feed unavailable',ja:'⚠ 地震データ取得不可'},
@@ -469,6 +477,8 @@ const ES={
   spawnOut:'Fuera del indicio de desove · TSM {t}°C · marea {tide}',spawnSpring:'viva',spawnNeap:'muerta',spawnMid:'media',
   anglerIndep:'Las ventanas solunares son aproximadas (modelo de tránsito lunar) y en hora local — la alimentación máxima se agrupa cerca de ellas. Indicio de desove = marea viva (luna nueva/llena) + temperatura del agua en la franja de ~20 °C: indicativo para ostras y muchos bivalvos, no una garantía.',
   geoHead:'Peligro geofísico',geoTag:'NO ES CLIMA',kM45:'M4.5+ / 7d',within:'dentro de {km} km',
+  bosaiHead:'Información de desastres 防災',bosaiTag:'OFICIAL',
+  bosaiIndep:'Recursos oficiales de prevención de desastres del municipio y la prefectura para Hisayama: refugios, mapas de riesgo y avisos.',
   tsunamiFlag:'⚠ ALERTA TSUNAMI',largest:'Mayor',noneWindow:'ninguno en el período',seismicUnavail:'⚠ datos sísmicos no disponibles',
   noVolc:'No hay volcanes activos en la región inmediata.',
   geoIndep:'Independiente del clima — se muestra para alerta de tsunami / sismo / ceniza. Verifica los niveles de alerta volcánica en el observatorio oficial.',
@@ -842,6 +852,7 @@ function renderCard(L, data){
   } else {
     geoHTML=`<div class="err">${t('seismicUnavail')}</div>`;
   }
+  const bosaiHTML=(L.bosai||[]).map(b=>`<a href="${b.u}" target="_blank" rel="noopener" style="color:var(--blue)">${b.l} →</a>`).join('<br>');
   const volcHTML = L.volc.length
     ? `<div class="volc">${L.volc.map(v=>{
         const m=evMatch(EV,v.n);
@@ -869,16 +880,17 @@ function renderCard(L, data){
       <div class="chips">${chips}</div>
       <div class="verify">${t('verifyLead')} ${verifyLink}</div>
       ${amedasHTML}
+      ${L.cam?`<div class="verify">📹 <a href="${L.cam.u}" target="_blank" rel="noopener" style="color:var(--blue)">${L.cam.l} ↗</a></div>`:''}
     </div>
 
-    <div class="sect">
+    ${L.inland?'':`<div class="sect">
       <h3><span class="ic">🌊</span>${t('marineHead')}<span class="tag">${t('marineTag')}</span></h3>
       <div class="readouts">
         <div class="ro"><div class="k">${t('kSigWave')}</div><div class="v">${num(M?.current?.wave_height)}<small> m</small></div></div>
         <div class="ro"><div class="k">${t('kPeriod')}</div><div class="v">${num(M?.current?.wave_period,0)}<small> s</small></div></div>
         <div class="ro"><div class="k">${t('kSwell')}</div><div class="v">${num(M?.current?.swell_wave_height)}<small> m</small></div></div>
       </div>
-    </div>
+    </div>`}
 
     <div class="sect">
       <h3><span class="ic">🛩️</span>${t('airHead')}<span class="tag">${t('airTag')}</span></h3>
@@ -895,13 +907,13 @@ function renderCard(L, data){
       ${fog?`<div class="flood ${fog.cls}" style="margin-top:11px">${t('fogMsg',{lab:fog.lab,det:fog.det})}${fogLink}</div>`:''}
     </div>
 
-    <div class="sect">
+    ${L.inland?'':`<div class="sect">
       <h3><span class="ic">🌙</span>${t('tideHead')}</h3>
       ${tideHTML}
       ${floodHTML}
-    </div>
+    </div>`}
 
-    <div class="sect">
+    ${L.inland?'':`<div class="sect">
       <h3><span class="ic">🎣</span>${t('anglerHead')}<span class="tag">${t('anglerTag')}</span></h3>
       <div class="readouts">
         <div class="ro"><div class="k">${t('kSST')}</div><div class="v">${sst!=null?num(sst,1):'—'}<small>°C</small></div></div>
@@ -910,7 +922,13 @@ function renderCard(L, data){
       </div>
       <div class="flood ${spawnCls}" style="margin-top:11px">🦪 ${spawnMsg}</div>
       <div class="indep">${t('anglerIndep')}</div>
-    </div>
+    </div>`}
+
+    ${L.bosai?`<div class="sect">
+      <h3><span class="ic">🛟</span>${t('bosaiHead')}<span class="tag">${t('bosaiTag')}</span></h3>
+      <div style="font-family:var(--mono);font-size:11.5px;line-height:2">${bosaiHTML}</div>
+      <div class="indep">${t('bosaiIndep')}</div>
+    </div>`:''}
 
     <div class="sect">
       <h3><span class="ic">🌋</span>${t('geoHead')}<span class="tag">${t('geoTag')}</span></h3>
