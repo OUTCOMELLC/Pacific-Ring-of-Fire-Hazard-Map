@@ -104,6 +104,7 @@
     <span class="grp"><i style="background:var(--red)"></i>&gt;4 m</span>
     <span class="grp"><i style="background:var(--dim)"></i><span data-i18n="legNoData">no data</span></span>
     <span class="grp" style="color:var(--dim)" data-i18n="legSource">● NDBC real · ■ NOWPHAS/JMA approx · ◆ DART tsunami · click for live detail</span>
+    <span class="grp" style="color:var(--dim)"><span style="color:#EC4899">🌀</span> <span data-i18n="legTyph">typhoon track + forecast (JMA RSMC)</span><span id="typhStat" style="color:#6B7280"></span> <a href="https://www.jma.go.jp/bosai/map.html#5/31.6/136.3/&elem=root&typhoon=all&contents=typhoon" target="_blank" rel="noopener" style="color:#3B82F6">JMA地図 →</a></span>
   </div>
   <div class="note" data-i18n="note">
     Wave height is a model value (Open-Meteo Marine) sampled at each buoy's location, since NDBC's raw feeds block browser access. Japan/Okinawa stations (■) are approximate NOWPHAS/JMA positions. Live data needs an https connection; markers still plot offline. Map © OpenStreetMap, CARTO.
@@ -112,7 +113,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
-const C={teal:'#2DD4BF',blue:'#3B82F6',amber:'#F59E0B',orange:'#FB8102',red:'#EF4444',dim:'#475569'};
+const C={teal:'#2DD4BF',blue:'#3B82F6',amber:'#F59E0B',orange:'#FB8102',red:'#EF4444',dim:'#475569',pink:'#EC4899'};
 /* ===== i18n — LANG fixed per file (en here; ja in the .ja.html copy) ===== */
 const LANG='en';
 const T={
@@ -123,6 +124,7 @@ const T={
   legHdr:{en:'Sig. wave H',ja:'有義波高'},
   legNoData:{en:'no data',ja:'データなし'},
   legSource:{en:'● NDBC real · ■ NOWPHAS/JMA approx · ◆ DART tsunami · click for live detail',ja:'● NDBC実測 ・ ■ NOWPHAS/JMA概略 ・ ◆ DART津波 ・ クリックで詳細'},
+  legTyph:{en:'typhoon track + forecast (JMA RSMC)',ja:'台風の経路＋予報（JMA RSMC）'},
   note:{en:'Wave height is a model value (Open-Meteo Marine) sampled at each buoy\u2019s location, since NDBC\u2019s raw feeds block browser access. Japan/Okinawa stations (■) are approximate NOWPHAS/JMA positions. Live data needs an https connection; markers still plot offline. Map © OpenStreetMap, CARTO.',ja:'波高はモデル値（Open-Meteo Marine）を各ブイ位置でサンプリングしたものです（NDBCの生フィードはブラウザからのアクセスを遮断するため）。日本・沖縄の観測点（■）はNOWPHAS/JMAの概略位置です。ライブデータにはhttps接続が必要ですが、オフラインでもマーカーは表示されます。地図 © OpenStreetMap, CARTO。'},
   stampLoading:{en:'loading waves…',ja:'波浪取得中…'},
   stampLive:{en:'{ok} buoys live{fail} · {t}',ja:'ブイ {ok} 点ライブ{fail} ・ {t}'},
@@ -140,6 +142,7 @@ const ES={
   refreshWaves:'Actualizar olas',
   legHdr:'Altura sign. ola',legNoData:'sin datos',
   legSource:'● NDBC real · ■ NOWPHAS/JMA aprox · ◆ DART tsunami · clic para detalle en vivo',
+  legTyph:'trayectoria de tifón + pronóstico (JMA RSMC)',
   note:'La altura de ola es un valor de modelo (Open-Meteo Marine) muestreado en la ubicación de cada boya, ya que los datos crudos de NDBC bloquean el acceso del navegador. Las estaciones de Japón/Okinawa (■) son posiciones aproximadas NOWPHAS/JMA. Los datos en vivo requieren conexión https; las marcas se muestran igual sin conexión. Mapa © OpenStreetMap, CARTO.',
   stampLoading:'cargando olas…',stampLive:'{ok} boyas en vivo{fail} · {t}',stampFail:' · {n} sin datos',
   stampOffline:'sin datos de olas en vivo (¿sin conexión?) — se muestran posiciones',
@@ -150,7 +153,7 @@ const ES={
 Object.keys(ES).forEach(k=>{ if(T[k]) T[k].es=ES[k]; else T[k]={en:ES[k],ja:ES[k],es:ES[k]}; });
 function applyChrome(){ document.documentElement.lang=LANG; document.querySelectorAll('[data-i18n]').forEach(el=>{ el.innerHTML=t(el.dataset.i18n); }); }
 const stamp=document.getElementById('stamp'), btn=document.getElementById('refreshBtn');
-async function getJSON(url,ms=12000){const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),ms);let r;try{r=await fetch(url,{signal:ctrl.signal});}catch(e){clearTimeout(timer);throw new Error(e&&e.name==='AbortError'?'timeout':'network/CORS blocked');}clearTimeout(timer);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
+async function getJSON(url,ms=12000){const ctrl=new AbortController();const timer=setTimeout(()=>ctrl.abort(),ms);let r;try{r=await fetch(url,{signal:ctrl.signal,cache:'no-store'});}catch(e){clearTimeout(timer);throw new Error(e&&e.name==='AbortError'?'timeout':'network/CORS blocked');}clearTimeout(timer);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
 const PL=lo=>lo>20?lo-360:lo;  // Pacific-continuous longitude frame
 
 const BUOYS=[
@@ -249,7 +252,7 @@ function buoyInfoHTML(b){
     `<div class="bsrc">Open-Meteo Marine model · sampled at station coordinates · ${w?('updated '+new Date().toLocaleTimeString([],{hour12:false})):'awaiting data'}</div>`;
 }
 
-let map, layer;
+let map, layer, typhoonLayer;
 function initMap(){
   map=L.map('map',{minZoom:2,maxZoom:11,worldCopyJump:false}).setView([21.46,-157.97],3);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
@@ -257,6 +260,7 @@ function initMap(){
     attribution:'&copy; OpenStreetMap &copy; CARTO · waves Open-Meteo · buoys NDBC/NOWPHAS'
   }).addTo(map);
   layer=L.layerGroup().addTo(map);
+  typhoonLayer=L.layerGroup().addTo(map);
   setTimeout(()=>map.invalidateSize(),250);   // iOS Safari: recompute size or tiles stay blank
   window.addEventListener('resize',()=>map.invalidateSize());
   window.addEventListener('orientationchange',()=>setTimeout(()=>map.invalidateSize(),300));
@@ -290,6 +294,139 @@ function flyTo(key){
   const v=VIEWS[key]; if(v&&v.b) map.fitBounds(v.b,{padding:[20,20]});
 }
 
+/* ===== Typhoons (JMA RSMC, W. Pacific) — ported from Ring-of-Fire map ===== */
+  // coord order by WNP range (lat<=65, lon>=95 don't overlap); range-checks to RSMC area; empties if unparseable.
+  const TC_AREA = p => p && p.lat>=-5 && p.lat<=65 && p.lon>=95 && p.lon<=185;
+  function tcNum(x){ if(x==null||typeof x==='object') return null; const v=parseFloat(String(x).replace(/[^0-9.\-]/g,'')); return isFinite(v)?v:null; }
+  function tcCoord(x){ if(x==null||typeof x==='object') return null; const s=String(x); let v=parseFloat(s.replace(/[^0-9.\-]/g,'')); if(!isFinite(v)) return null; if(/[SW]/i.test(s)) v=-Math.abs(v); return v; }
+  function tcOrder(a,b){ a=tcCoord(a); b=tcCoord(b); if(a==null||b==null) return null;
+    const aLat=a>=-5&&a<=65, aLon=a>=95&&a<=185, bLat=b>=-5&&b<=65, bLon=b>=95&&b<=185;
+    if(aLat&&bLon) return {lat:a,lon:b}; if(bLat&&aLon) return {lat:b,lon:a}; return null; }
+  function tcText(v){ if(v==null) return ''; if(typeof v==='string') return v;
+    if(typeof v==='object') return LANG==='ja'?(v.ja||v.text||v.en||v.name||''):(v.en||v.text||v.ja||v.name||''); return String(v); }
+  function tcVt(node){ let v=node.validtime||node.validTime||node.dateTime||node.datetime||node.date||node.time||null;
+    if(v&&typeof v==='object') v=v.DateTime||v.dateTime||v.text||v.value||v.jst||null; return (typeof v==='string')?v:null; }
+  function tcReadPos(o){
+    if(!o||typeof o!=='object') return null;
+    const p = o.position || o.center || o.centre || o;
+    let d = (p && (p.deg||p.degree||p.latlon||p.latLon)) || o.deg || o.degree || null;
+    let lat=null, lon=null;
+    if(Array.isArray(d) && d.length>=2){ const r=tcOrder(d[0],d[1]); if(r){ lat=r.lat; lon=r.lon; } }
+    else if(d && typeof d==='object'){ lat=tcCoord(d.lat!=null?d.lat:d.latitude); lon=tcCoord(d.lon!=null?d.lon:(d.lng!=null?d.lng:d.longitude)); }
+    if((lat==null||lon==null) && p && typeof p==='object' && !Array.isArray(p)){
+      const la=(p.lat!=null?p.lat:p.latitude), lo=(p.lon!=null?p.lon:(p.lng!=null?p.lng:p.longitude));
+      if(la!=null||lo!=null){ lat=tcCoord(la); lon=tcCoord(lo); }
+    }
+    if(lat==null||lon==null) return null;
+    const pos={lat,lon}; return TC_AREA(pos)?pos:null;
+  }
+  function extractTyphoonPoints(spec){
+    const out=[], seen=new Set();
+    (function walk(node){
+      if(!node) return;
+      if(Array.isArray(node)){ node.forEach(walk); return; }
+      if(typeof node!=='object') return;
+      const hasLatLon=(node.lat!=null&&(node.lon!=null||node.lng!=null))||(node.latitude!=null&&node.longitude!=null);
+      const posLoc=('position' in node)||('deg' in node)||('center' in node)||('centre' in node)||hasLatLon;
+      const meta=tcVt(node)||node.pressure!=null||node.maximumWind||node.maximumwind||node.intensity||node.course||node.speed||node.scale||node.location;
+      const isEntry=posLoc && meta;  // a bare position/deg container (no time/meta) is NOT a track point
+      if(isEntry){
+        const pos=tcReadPos(node);
+        if(pos){
+          const vt=tcVt(node), key=(vt||'')+'|'+pos.lat.toFixed(2)+'|'+pos.lon.toFixed(2);
+          if(!seen.has(key)){
+            seen.add(key);
+            const mw=node.maximumWind||node.maximumwind||node.maxWind||{}, sus=mw.sustained||mw.Sustained||{};
+            out.push({ lat:pos.lat, lon:pos.lon, vt:vt,
+              pressure:tcNum(node.pressure!=null?node.pressure:node.centralPressure),
+              kt:tcNum(sus.kt), ms:tcNum(sus['m/s']!=null?sus['m/s']:sus.ms),
+              intensity:tcText(node.intensity), scale:tcText(node.scale),
+              course:tcText(node.course), speed:tcText(node.speed), location:tcText(node.location),
+              gale:(node.galeWarning&&node.galeWarning.range)?tcNum(node.galeWarning.range.km):null,
+              storm:(node.stormWarning&&node.stormWarning.range)?tcNum(node.stormWarning.range.km):null });
+          }
+        }
+      }
+      for(const k in node){ const v=node[k]; if(v&&typeof v==='object') walk(v); }
+    })(spec);
+    const withVt=out.filter(p=>p.vt).sort((a,b)=> a.vt<b.vt?-1:a.vt>b.vt?1:0);
+    return withVt.concat(out.filter(p=>!p.vt));
+  }
+  function tcName(spec,id){ let nm=null;
+    (function look(n,d){ if(nm||!n||d>5) return; if(Array.isArray(n)){ n.forEach(x=>look(x,d+1)); return; }
+      if(typeof n==='object'){ if(n.name){nm=n.name;return;} for(const k in n){ if(n[k]&&typeof n[k]==='object') look(n[k],d+1); } } })(spec,0);
+    const t=tcText(nm), num=(String(id||'').match(/(\d{2})$/)||[])[1];
+    const numLabel=num?(LANG==='ja'?('台風'+parseInt(num,10)+'号'):LANG==='es'?('Tifón n.º '+parseInt(num,10)):('Typhoon No. '+parseInt(num,10))):(id||'');
+    return t?(t+(num?' · '+numLabel:'')):numLabel;
+  }
+  function tcColor(kt){ return kt==null?C.pink:(kt>=64?'#D6336C':kt>=34?C.pink:'#F472B6'); }
+  function tcPopup(name,p,isCur){
+    const Lpos=LANG==='ja'?'位置':LANG==='es'?'posición':'position',
+          Lpr=LANG==='ja'?'中心気圧':LANG==='es'?'presión':'pressure',
+          Lwd=LANG==='ja'?'最大風速':LANG==='es'?'viento máx.':'max wind',
+          Lin=LANG==='ja'?'強さ':LANG==='es'?'intensidad':'intensity',
+          Lsz=LANG==='ja'?'大きさ':LANG==='es'?'tamaño':'size',
+          Lmv=LANG==='ja'?'進行':LANG==='es'?'movimiento':'movement',
+          Lfc=LANG==='ja'?'予報':LANG==='es'?'pronóstico':'forecast',
+          Llk=LANG==='ja'?'気象庁 台風情報 →':LANG==='es'?'info de tifones JMA →':'JMA typhoon info →';
+    const vt=p.vt?String(p.vt).slice(0,16).replace('T',' '):'';
+    const L=[]; L.push('<b>🌀 '+name+'</b>'+(isCur?'':' <span style="color:'+C.dim+'">('+Lfc+')</span>'));
+    if(vt) L.push(vt);
+    const isc=[p.intensity?Lin+' '+p.intensity:'',p.scale?Lsz+' '+p.scale:''].filter(Boolean).join(' · '); if(isc) L.push(isc);
+    if(p.pressure!=null) L.push(Lpr+' '+p.pressure+' hPa');
+    if(p.kt!=null||p.ms!=null) L.push(Lwd+' '+(p.ms!=null?p.ms+' m/s':'')+(p.ms!=null&&p.kt!=null?' / ':'')+(p.kt!=null?p.kt+' kt':''));
+    if(isCur&&(p.course||p.speed)) L.push(Lmv+' '+[p.course,p.speed].filter(Boolean).join(' '));
+    L.push('<span style="color:'+C.dim+'">'+Lpos+': '+p.lat.toFixed(1)+'°N '+p.lon.toFixed(1)+'°E</span>');
+    L.push('<a href="https://www.jma.go.jp/bosai/map.html#5/'+p.lat.toFixed(2)+'/'+p.lon.toFixed(2)+'/&contents=typhoon" target="_blank" rel="noopener" style="color:'+C.blue+'">'+Llk+'</a>');
+    L.push('<span style="color:#6B7280">気象庁 JMA · RSMC Tokyo</span>');
+    return L.join('<br>');
+  }
+  function drawTyphoon(id,name,pts){
+    if(!pts.length) return; const cur=pts[0];
+    const latlngs=pts.map(p=>[p.lat,PL(p.lon)]);
+    if(latlngs.length>1) L.polyline(latlngs,{color:C.pink,weight:2,dashArray:'5,5',opacity:.85}).addTo(typhoonLayer);
+    if(cur.gale)  L.circle([cur.lat,PL(cur.lon)],{radius:cur.gale*1000,color:C.pink,weight:1,fillColor:C.pink,fillOpacity:.06,opacity:.4}).addTo(typhoonLayer);
+    if(cur.storm) L.circle([cur.lat,PL(cur.lon)],{radius:cur.storm*1000,color:'#D6336C',weight:1,fillColor:'#D6336C',fillOpacity:.10,opacity:.5}).addTo(typhoonLayer);
+    pts.slice(1).forEach(p=>{
+      L.circleMarker([p.lat,PL(p.lon)],{radius:4,color:C.pink,weight:1.5,fillColor:'#0B0F19',fillOpacity:1}).addTo(typhoonLayer).bindPopup(tcPopup(name,p,false));
+    });
+    const sz=cur.kt!=null?Math.max(20,Math.min(40,18+cur.kt/5)):24;
+    L.marker([cur.lat,PL(cur.lon)],{zIndexOffset:1000,icon:L.divIcon({className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],
+      html:'<div style="font-size:'+sz+'px;line-height:1;color:'+tcColor(cur.kt)+';text-shadow:0 0 4px #000,0 0 2px #000">🌀</div>'})}).addTo(typhoonLayer).bindPopup(tcPopup(name,cur,true));
+  }
+  function tcStat(txt,col){ const el=document.getElementById('typhStat'); if(el){ el.textContent=txt?(' · '+txt):''; el.style.color=col||'#6B7280'; } }
+  function showTcDbg(lines){
+    let el=document.getElementById('tcdbg');
+    if(!el){ el=document.createElement('div'); el.id='tcdbg';
+      el.style.cssText='position:fixed;left:8px;bottom:8px;z-index:99999;max-width:92vw;max-height:55vh;overflow:auto;background:#0B0F19;color:#D1D5DB;border:1px solid #FB8102;border-radius:8px;padding:10px 12px;font:11px/1.55 ui-monospace,monospace;white-space:pre-wrap;box-shadow:0 4px 22px #000';
+      document.body.appendChild(el); }
+    el.textContent='🌀 TYPHOON DEBUG  (remove #tcdebug from URL to hide)\n'+lines.join('\n');
+  }
+  async function loadTyphoons(){
+    typhoonLayer.clearLayers();
+    const DBG=/tcdebug/i.test(location.hash||''); const dbg=[];
+    const S_none=LANG==='ja'?'活動中の台風なし':LANG==='es'?'sin tifones activos':'none active now';
+    const S_off =LANG==='ja'?'配信オフライン（要https）':LANG==='es'?'sin conexión (req. https)':'feed offline (needs https)';
+    const S_nod =LANG==='ja'?'台風あり・データ取得不可':LANG==='es'?'activo — sin datos':'active — data unavailable';
+    let idx; try{ idx=await getJSON('https://www.jma.go.jp/bosai/information/data/typhoon.json?_='+Date.now()); }catch(e){ tcStat(S_off,'#F59E0B'); if(DBG)showTcDbg(['INDEX FETCH FAILED: '+e.message,'→ CORS/offline; open the live https page in a real browser']); return -1; }
+    if(!Array.isArray(idx)||!idx.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['index loaded but EMPTY — no bulletins from JMA']); return 0; }
+    const now=Date.now(), FRESH=240*3600*1000, latest={};  /* 10 days: JMA lists only relevant storms; 36h was too strict */
+    idx.forEach(o=>{ if(!o||!o.eventId) return; const tms=Date.parse(o.reportDatetime||o.datetime||''); if(isFinite(tms)) latest[o.eventId]=Math.max(latest[o.eventId]||0,tms); });
+    if(DBG){ dbg.push('JMA index entries: '+idx.length); Object.keys(latest).forEach(id=>{ const ageH=((now-latest[id])/3600000).toFixed(1); dbg.push('  '+id+'  '+new Date(latest[id]).toISOString().slice(0,16).replace('T',' ')+'Z  age '+ageH+'h'+(now-latest[id]<FRESH?'  [shown]':'  [>10d OLD → filtered]')); }); }
+    const ids=Object.keys(latest).filter(id=> now-latest[id] < FRESH);
+    if(!ids.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['RESULT: no fresh storm in the index your browser received.','If the only IDs below are weeks old, JMA served a STALE index.',''].concat(dbg)); return 0; }
+    let n=0;
+    await Promise.allSettled(ids.map(async id=>{
+      let spec; try{ spec=await getJSON('https://www.jma.go.jp/bosai/typhoon/data/'+id+'/specifications.json?_='+Date.now()); }catch(e){ if(DBG)dbg.push(id+'  SPECS FETCH ERR: '+e.message); return; }
+      const pts=extractTyphoonPoints(spec);
+      if(DBG)dbg.push(id+'  specs ok · points='+pts.length+(pts[0]?(' · first '+pts[0].lat.toFixed(1)+'N '+pts[0].lon.toFixed(1)+'E'):'')+'\n     top keys: '+Object.keys(spec||{}).slice(0,10).join(', '));
+      if(pts.length){ drawTyphoon(id, tcName(spec,id), pts); n++; }
+    }));
+    if(DBG)showTcDbg(['RESULT: '+n+' storm(s) drawn.',(n===0?'Storm IS in the index but parsed to 0 points → parser/structure issue (keys shown below).':''),''].concat(dbg));
+    if(n>0){ const a=LANG==='ja'?(n+'個 活動中'):LANG==='es'?(n+' activo(s)'):(n+' active'); tcStat(a,'#EC4899'); return n; }
+    tcStat(S_nod,'#F59E0B'); return -2;
+  }
+
 async function fetchWaves(){
   btn.classList.add('busy'); stamp.textContent=t('stampLoading');
   const regions=['hi','sc','gu','jp','wc','ak','dart']; let ok=0,fail=0;
@@ -304,6 +441,7 @@ async function fetchWaves(){
       }catch(e){ fail+=list.length; }
     }));
     renderMarkers();
+    loadTyphoons();
     stamp.textContent = ok? t('stampLive',{ok:ok,fail:fail?t('stampFail',{n:fail}):'',t:new Date().toLocaleTimeString([],{hour12:false})}) : t('stampOffline');
   }catch(e){
     stamp.textContent='wave load error — positions shown';
