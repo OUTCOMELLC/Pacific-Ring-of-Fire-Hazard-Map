@@ -105,6 +105,8 @@
     <span class="grp"><i style="background:var(--dim)"></i><span data-i18n="legNoData">no data</span></span>
     <span class="grp" style="color:var(--dim)" data-i18n="legSource">● NDBC real · ■ NOWPHAS/JMA approx · ◆ DART tsunami · click for live detail</span>
     <span class="grp" style="color:var(--dim)"><span style="color:#EC4899">🌀</span> <span data-i18n="legTyph">typhoon track + forecast (JMA RSMC)</span><span id="typhStat" style="color:#6B7280"></span> <a href="https://www.jma.go.jp/bosai/map.html#5/31.6/136.3/&elem=root&typhoon=all&contents=typhoon" target="_blank" rel="noopener" style="color:#3B82F6">JMA地図 →</a></span>
+    <span class="grp" style="color:var(--dim)"><span style="color:#F59E0B">🌀</span> <span data-i18n="legNHC">hurricane track + cone (NHC/CPHC → Mexico, US, Hawaii)</span><span id="nhcStat" style="color:#6B7280"></span> <a href="https://www.nhc.noaa.gov/cyclones/?epac" target="_blank" rel="noopener" style="color:#3B82F6">NHC →</a></span>
+    <span class="grp" style="color:var(--dim)"><span style="color:#22D3EE">🌊</span> ENSO: <span id="ensoStat" style="color:#9CA3AF">…</span> <a href="https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.shtml" target="_blank" rel="noopener" style="color:#3B82F6">NOAA →</a></span>
   </div>
   <div class="note" data-i18n="note">
     Wave height is a model value (Open-Meteo Marine) sampled at each buoy's location, since NDBC's raw feeds block browser access. Japan/Okinawa stations (■) are approximate NOWPHAS/JMA positions. Live data needs an https connection; markers still plot offline. Map © OpenStreetMap, CARTO.
@@ -125,6 +127,7 @@ const T={
   legNoData:{en:'no data',ja:'データなし'},
   legSource:{en:'● NDBC real · ■ NOWPHAS/JMA approx · ◆ DART tsunami · click for live detail',ja:'● NDBC実測 ・ ■ NOWPHAS/JMA概略 ・ ◆ DART津波 ・ クリックで詳細'},
   legTyph:{en:'typhoon track + forecast (JMA RSMC)',ja:'台風の経路＋予報（JMA RSMC）'},
+  legNHC:{en:'hurricane track + cone (NHC/CPHC → Mexico, US, Hawaii)',ja:'ハリケーンの経路＋予報円（NHC/CPHC → メキシコ・米国・ハワイ）'},
   note:{en:'Wave height is a model value (Open-Meteo Marine) sampled at each buoy\u2019s location, since NDBC\u2019s raw feeds block browser access. Japan/Okinawa stations (■) are approximate NOWPHAS/JMA positions. Live data needs an https connection; markers still plot offline. Map © OpenStreetMap, CARTO.',ja:'波高はモデル値（Open-Meteo Marine）を各ブイ位置でサンプリングしたものです（NDBCの生フィードはブラウザからのアクセスを遮断するため）。日本・沖縄の観測点（■）はNOWPHAS/JMAの概略位置です。ライブデータにはhttps接続が必要ですが、オフラインでもマーカーは表示されます。地図 © OpenStreetMap, CARTO。'},
   stampLoading:{en:'loading waves…',ja:'波浪取得中…'},
   stampLive:{en:'{ok} buoys live{fail} · {t}',ja:'ブイ {ok} 点ライブ{fail} ・ {t}'},
@@ -143,6 +146,7 @@ const ES={
   legHdr:'Altura sign. ola',legNoData:'sin datos',
   legSource:'● NDBC real · ■ NOWPHAS/JMA aprox · ◆ DART tsunami · clic para detalle en vivo',
   legTyph:'trayectoria de tifón + pronóstico (JMA RSMC)',
+  legNHC:'trayectoria + cono de huracán (NHC/CPHC → México, EE. UU., Hawái)',
   note:'La altura de ola es un valor de modelo (Open-Meteo Marine) muestreado en la ubicación de cada boya, ya que los datos crudos de NDBC bloquean el acceso del navegador. Las estaciones de Japón/Okinawa (■) son posiciones aproximadas NOWPHAS/JMA. Los datos en vivo requieren conexión https; las marcas se muestran igual sin conexión. Mapa © OpenStreetMap, CARTO.',
   stampLoading:'cargando olas…',stampLive:'{ok} boyas en vivo{fail} · {t}',stampFail:' · {n} sin datos',
   stampOffline:'sin datos de olas en vivo (¿sin conexión?) — se muestran posiciones',
@@ -252,7 +256,7 @@ function buoyInfoHTML(b){
     `<div class="bsrc">Open-Meteo Marine model · sampled at station coordinates · ${w?('updated '+new Date().toLocaleTimeString([],{hour12:false})):'awaiting data'}</div>`;
 }
 
-let map, layer, typhoonLayer;
+let map, layer, typhoonLayer, nhcLayer;
 function initMap(){
   map=L.map('map',{minZoom:2,maxZoom:11,worldCopyJump:false}).setView([21.46,-157.97],3);
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
@@ -261,6 +265,7 @@ function initMap(){
   }).addTo(map);
   layer=L.layerGroup().addTo(map);
   typhoonLayer=L.layerGroup().addTo(map);
+  nhcLayer=L.layerGroup().addTo(map);
   setTimeout(()=>map.invalidateSize(),250);   // iOS Safari: recompute size or tiles stay blank
   window.addEventListener('resize',()=>map.invalidateSize());
   window.addEventListener('orientationchange',()=>setTimeout(()=>map.invalidateSize(),300));
@@ -427,6 +432,73 @@ function flyTo(key){
     tcStat(S_nod,'#F59E0B'); return -2;
   }
 
+/* ===== East/Central Pacific hurricanes (NHC/CPHC) + ENSO — ported from ROF map ===== */
+  // ── East/Central Pacific hurricanes (NHC + CPHC) — toward Mexico, US West Coast & Hawaii ──
+  // NOAA ArcGIS tropical summary service (geoJSON, CORS-open). Pacific basins only (idp_source ep/cp).
+  const NHC_BASE='https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather_summary/MapServer';
+  const NHCC='#F59E0B';
+  function nhcGet(o,keys){ if(!o)return null; for(const k of keys){ for(const kk in o){ if(kk.toLowerCase()===k && o[kk]!=null && o[kk]!=='') return o[kk]; } } return null; }
+  function nhcBasin(p){ const s=(''+(nhcGet(p,['idp_source','stormid','atcf'])||'')).toLowerCase(); if(/^(ep|cp)/.test(s))return 'pac'; if(/^(al|at)/.test(s))return 'atl'; return '?'; }
+  function nhcName(p){ const nm=nhcGet(p,['stormname','tcname']); const cls=(''+(nhcGet(p,['dvlbl','stormtype'])||'')).trim(); const w=nhcGet(p,['idp_source','stormid']); return nm?((cls?cls+' ':'')+nm):(w?(''+w).toUpperCase():'Storm'); }
+  function nhcNum(v){ const n=parseFloat(v); return isFinite(n)?n:null; }
+  function nhcLL(c){ return [c[1], PL(c[0])]; }
+  function nhcPac(f){ const b=nhcBasin(f.properties||{}); if(b==='pac')return true; if(b==='atl')return false; let lon=null,g=f.geometry; try{ if(g.type==='Point')lon=g.coordinates[0]; else if(g.type==='LineString')lon=g.coordinates[0][0]; else if(g.type==='MultiLineString')lon=g.coordinates[0][0][0]; else if(g.type==='Polygon')lon=g.coordinates[0][0][0]; else if(g.type==='MultiPolygon')lon=g.coordinates[0][0][0][0]; }catch(e){} return lon!=null&&lon<=-80&&lon>=-180; }
+  function nhcStat(txt,col){ const el=document.getElementById('nhcStat'); if(el){ el.textContent=txt?(' · '+txt):''; el.style.color=col||'#6B7280'; } }
+  function nhcPopup(P,isCur){
+    const Lpos=LANG==='ja'?'位置':LANG==='es'?'posición':'position', Lwd=LANG==='ja'?'最大風速':LANG==='es'?'viento máx.':'max wind',
+          Lpr=LANG==='ja'?'中心気圧':LANG==='es'?'presión':'pressure', Lfc=LANG==='ja'?'予報':LANG==='es'?'pronóstico':'forecast';
+    const p=P.props, mph=nhcNum(nhcGet(p,['maxwind','intensity'])), mslp=nhcNum(nhcGet(p,['mslp','minsealevelpres'])), dt=nhcGet(p,['fldatelbl','datelbl','advdate','date']);
+    const L2=[]; L2.push('<b>🌀 '+nhcName(p)+'</b>'+(isCur?'':' <span style="color:'+C.dim+'">('+Lfc+')</span>'));
+    if(dt) L2.push(''+dt);
+    if(mph!=null) L2.push(Lwd+' '+mph+' mph');
+    if(mslp!=null) L2.push(Lpr+' '+mslp+' mb');
+    L2.push('<span style="color:'+C.dim+'">'+Lpos+': '+P.lat.toFixed(1)+'°N '+Math.abs(P.lon).toFixed(1)+'°W</span>');
+    L2.push('<a href="https://www.nhc.noaa.gov/cyclones/?epac" target="_blank" rel="noopener" style="color:'+C.blue+'">NHC / CPHC →</a>');
+    L2.push('<span style="color:#6B7280">NOAA NHC · CPHC</span>');
+    return L2.join('<br>');
+  }
+  function nhcLine(f){ const g=f.geometry; if(!g)return; const ls=g.type==='MultiLineString'?g.coordinates:[g.coordinates]; ls.forEach(ln=>{ const ll=ln.map(nhcLL); if(ll.length>1) L.polyline(ll,{color:NHCC,weight:2,dashArray:'5,5',opacity:.85}).addTo(nhcLayer); }); }
+  function nhcPoly(f){ const g=f.geometry; if(!g)return; const ps=g.type==='MultiPolygon'?g.coordinates:[g.coordinates]; ps.forEach(rings=>{ try{ L.polygon(rings.map(r=>r.map(nhcLL)),{color:NHCC,weight:1,dashArray:'4,4',fillColor:NHCC,fillOpacity:.05,opacity:.4}).addTo(nhcLayer); }catch(e){} }); }
+  function nhcPts(feats){ const tau=f=>{ const v=nhcNum(nhcGet(f.properties,['tau','fcsthr','fcstprd'])); return v==null?9999:v; }; feats.sort((a,b)=>tau(a)-tau(b));
+    feats.forEach((f,i)=>{ const g=f.geometry; if(!g||g.type!=='Point')return; const lon=g.coordinates[0],lat=g.coordinates[1], P={lat:lat,lon:lon,props:f.properties||{}};
+      if(i===0){ const mph=nhcNum(nhcGet(f.properties,['maxwind','intensity'])), kt=mph!=null?mph*0.868976:null, sz=kt!=null?Math.max(20,Math.min(40,18+kt/5)):24;
+        L.marker(nhcLL(g.coordinates),{zIndexOffset:900,icon:L.divIcon({className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],html:'<div style="font-size:'+sz+'px;line-height:1;color:'+(kt!=null&&kt>=64?'#EF4444':NHCC)+';text-shadow:0 0 4px #000,0 0 2px #000">🌀</div>'})}).addTo(nhcLayer).bindPopup(nhcPopup(P,true)); }
+      else L.circleMarker(nhcLL(g.coordinates),{radius:4,color:NHCC,weight:1.5,fillColor:'#0B0F19',fillOpacity:1}).addTo(nhcLayer).bindPopup(nhcPopup(P,false)); }); }
+  async function loadNHC(){
+    if(typeof nhcLayer==='undefined')return 0; nhcLayer.clearLayers();
+    const DBG=/nhcdebug/i.test(location.hash||''); const dbg=[];
+    let meta; try{ meta=await getJSON(NHC_BASE+'?f=json&_='+Date.now()); }catch(e){ nhcStat(LANG==='ja'?'配信不可':LANG==='es'?'sin conexión':'feed offline','#F59E0B'); if(DBG)showTcDbg(['NHC META FETCH FAILED: '+e.message,'(CORS or offline — NHC/CPHC layer)']); return -1; }
+    const layers=(meta&&meta.layers)||[]; if(DBG)dbg.push('layers: '+layers.map(l=>l.id+':'+l.name).join(' | '));
+    const findId=re=>{ const x=layers.find(l=>re.test(l.name||'')); return x?x.id:null; };
+    const idTrack=findId(/forecast track/i), idPts=findId(/forecast point/i), idCone=findId(/forecast cone/i);
+    const q=async id=>{ if(id==null)return null; try{ return await getJSON(NHC_BASE+'/'+id+'/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=4326&f=geojson&_='+Date.now()); }catch(e){ if(DBG)dbg.push('layer '+id+' ERR '+e.message); return null; } };
+    const res=await Promise.all([q(idCone),q(idTrack),q(idPts)]); const cone=res[0],track=res[1],pts=res[2];
+    let n=0;
+    if(cone&&cone.features) cone.features.filter(nhcPac).forEach(nhcPoly);
+    if(track&&track.features) track.features.filter(nhcPac).forEach(nhcLine);
+    if(pts&&pts.features){ const byS={}; pts.features.filter(nhcPac).forEach(f=>{ const k=(nhcGet(f.properties,['idp_source','stormid','stormname'])||'?')+''; (byS[k]=byS[k]||[]).push(f); }); Object.keys(byS).forEach(k=>{ nhcPts(byS[k]); n++; }); }
+    if(DBG)showTcDbg(['NHC/CPHC E·C Pacific storms drawn: '+n,'(toward Mexico / US / Hawaii)',''].concat(dbg));
+    nhcStat(n>0?(LANG==='ja'?(n+'個 活動中'):LANG==='es'?(n+' activo(s)'):(n+' active')):(LANG==='ja'?'活動なし':LANG==='es'?'ninguno':'none active'), n>0?NHCC:'#6B7280');
+    return n;
+  }
+
+  // ── ENSO status (El Niño / La Niña / Neutral) — NOAA CPC ONI, monthly; live fetch w/ dated fallback ──
+  const ENSO_TXT={nino:{en:'El Niño',ja:'エルニーニョ',es:'El Niño'},nina:{en:'La Niña',ja:'ラニーニャ',es:'La Niña'},neu:{en:'Neutral',ja:'中立',es:'Neutral'}};
+  const ENSO_NOW={phase:'neu', note:{en:'El Niño Watch',ja:'エルニーニョ・ウォッチ',es:'Vigilancia de El Niño'}, asof:'May 2026'};  // NOAA CPC — refresh monthly (2nd Thu)
+  function ensoLabel(ph){ const m=ENSO_TXT[ph]||ENSO_TXT.neu; return m[LANG]||m.en; }
+  function ensoColor(ph){ return ph==='nino'?'#F97316':ph==='nina'?'#3B82F6':'#9CA3AF'; }
+  async function loadENSO(){
+    const el=document.getElementById('ensoStat'); if(!el) return;
+    let ph=ENSO_NOW.phase, oni=null, live=false;
+    try{ const r=await fetch('https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt',{cache:'no-store'});
+      if(r.ok){ const rows=(await r.text()).trim().split('\n'); const last=(rows[rows.length-1]||'').trim().split(/\s+/);
+        const a=parseFloat(last[3]); if(isFinite(a)){ oni=a; ph=a>=0.5?'nino':a<=-0.5?'nina':'neu'; live=true; } } }catch(e){}
+    const note=ENSO_NOW.note[LANG]||ENSO_NOW.note.en;
+    el.textContent=ensoLabel(ph)+(live?(' (ONI '+(oni>=0?'+':'')+oni.toFixed(1)+')'):(' · '+note+' · '+ENSO_NOW.asof));
+    el.style.color=ensoColor(ph);
+  }
+
+
 async function fetchWaves(){
   btn.classList.add('busy'); stamp.textContent=t('stampLoading');
   const regions=['hi','sc','gu','jp','wc','ak','dart']; let ok=0,fail=0;
@@ -442,6 +514,8 @@ async function fetchWaves(){
     }));
     renderMarkers();
     loadTyphoons();
+    loadNHC();
+    loadENSO();
     stamp.textContent = ok? t('stampLive',{ok:ok,fail:fail?t('stampFail',{n:fail}):'',t:new Date().toLocaleTimeString([],{hour12:false})}) : t('stampOffline');
   }catch(e){
     stamp.textContent='wave load error — positions shown';
