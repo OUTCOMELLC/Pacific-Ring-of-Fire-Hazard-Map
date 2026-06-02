@@ -148,7 +148,7 @@
       <div class="row"><span class="sw" style="background:var(--red)"></span> <span data-i18n="legQs">quake &lt;70 km (shallow)</span></div>
       <div class="row"><span class="sw" style="background:var(--amber)"></span> <span data-i18n="legQm">quake 70–300 km</span></div>
       <div class="row"><span class="sw" style="background:var(--blue)"></span> <span data-i18n="legQd">quake &gt;300 km (deep)</span></div>
-      <div class="row"><span style="color:#EC4899">🌀</span> <span data-i18n="legTyph">typhoon track + forecast (JMA, W. Pacific)</span></div>
+      <div class="row"><span style="color:#EC4899">🌀</span> <span data-i18n="legTyph">typhoon track + forecast (JMA, W. Pacific)</span><span id="typhStat" style="font-size:10px;color:#6B7280"></span></div>
       <div class="row" style="color:var(--muted)" data-i18n="legNote">○ size ∝ magnitude · ◎ tsunami flag · ▪ JMA 防災 (Japan)</div>
     </div>
   </div>
@@ -174,7 +174,7 @@ const T={
   jalertOff:{en:'🌊 <b>Jアラート級 津波</b>: feed offline <span style="color:var(--dim)">(needs https)</span>',ja:'🌊 <b>Jアラート級 津波</b>：取得不可 <span style="color:var(--dim)">(https が必要)</span>'},
   jalertNone:{en:'🌊 <b>Jアラート級 津波</b>: 現在発表なし · no active tsunami warning <span style="color:var(--dim)">(JMA防災/P2P)</span>',ja:'🌊 <b>Jアラート級 津波</b>：現在発表なし <span style="color:var(--dim)">(JMA防災/P2P)</span>'},
   stInit:{en:'initializing…',ja:'初期化中…'},stOffline:{en:'offline',ja:'オフライン'},stLoading:{en:'loading…',ja:'読み込み中…'},
-  stCounts:{en:'{v} volcanoes · {q} USGS quakes · {j} JMA quakes · {t}',ja:'火山 {v} ・ USGS地震 {q} ・ JMA地震 {j} ・ {t}'},
+  stCounts:{en:'{v} volcanoes · {q} USGS quakes · {j} JMA quakes · 🌀 {ty} · {t}',ja:'火山 {v} ・ USGS地震 {q} ・ JMA地震 {j} ・ 🌀 {ty} ・ {t}'},
   stAircraft:{en:'{n} aircraft within {r} nm of center · {t}',ja:'中心から {r} nm 以内に航空機 {n} 機 ・ {t}'},
   stAircraftErr:{en:'aircraft feed: {e} — host over https',ja:'航空機フィード：{e} — https でのホストが必要'},
   nolf:{en:'Map library (Leaflet) could not load — you appear to be offline or in a sandbox that blocks the CDN.<br>Download this file and open it in a normal browser, or host it over https://.',ja:'地図ライブラリ（Leaflet）を読み込めませんでした — オフライン、またはCDNを遮断する環境のようです。<br>このファイルをダウンロードして通常のブラウザで開くか、https:// でホストしてください。'},
@@ -200,7 +200,7 @@ const ES={
   jalertOff:'🌊 <b>Tsunami (nivel J-Alert)</b>: sin conexión <span style="color:var(--dim)">(requiere https)</span>',
   jalertNone:'🌊 <b>Tsunami (nivel J-Alert)</b>: sin avisos vigentes <span style="color:var(--dim)">(JMA防災/P2P)</span>',
   stInit:'inicializando…',stOffline:'sin conexión',stLoading:'cargando…',
-  stCounts:'{v} volcanes · {q} sismos USGS · {j} sismos JMA · {t}',
+  stCounts:'{v} volcanes · {q} sismos USGS · {j} sismos JMA · 🌀 {ty} · {t}',
   stAircraft:'{n} aeronaves a {r} nm del centro · {t}',
   stAircraftErr:'datos de aeronaves: {e} — requiere https',
   nolf:'No se pudo cargar la biblioteca de mapas (Leaflet) — pareces estar sin conexión o en un entorno que bloquea el CDN.<br>Descarga este archivo y ábrelo en un navegador normal, o aloja sobre https://.',
@@ -646,20 +646,26 @@ if(typeof L==='undefined'){
     L.marker([cur.lat,PL(cur.lon)],{zIndexOffset:1000,icon:L.divIcon({className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],
       html:'<div style="font-size:'+sz+'px;line-height:1;color:'+tcColor(cur.kt)+';text-shadow:0 0 4px #000,0 0 2px #000">🌀</div>'})}).addTo(typhoonLayer).bindPopup(tcPopup(name,cur,true));
   }
+  function tcStat(txt,col){ const el=document.getElementById('typhStat'); if(el){ el.textContent=txt?(' · '+txt):''; el.style.color=col||'#6B7280'; } }
   async function loadTyphoons(){
     typhoonLayer.clearLayers();
-    let idx; try{ idx=await getJSON('https://www.jma.go.jp/bosai/information/data/typhoon.json'); }catch(e){ return 0; }
-    if(!Array.isArray(idx)||!idx.length) return 0;
+    const S_none=LANG==='ja'?'活動中の台風なし':LANG==='es'?'sin tifones activos':'none active now';
+    const S_off =LANG==='ja'?'配信オフライン（要https）':LANG==='es'?'sin conexión (req. https)':'feed offline (needs https)';
+    const S_nod =LANG==='ja'?'台風あり・データ取得不可':LANG==='es'?'activo — sin datos':'active — data unavailable';
+    let idx; try{ idx=await getJSON('https://www.jma.go.jp/bosai/information/data/typhoon.json'); }catch(e){ tcStat(S_off,'#F59E0B'); return 0; }
+    if(!Array.isArray(idx)||!idx.length){ tcStat(S_none,'#6B7280'); return 0; }
     const now=Date.now(), FRESH=36*3600*1000, latest={};
     idx.forEach(o=>{ if(!o||!o.eventId) return; const tms=Date.parse(o.reportDatetime||o.datetime||''); if(isFinite(tms)) latest[o.eventId]=Math.max(latest[o.eventId]||0,tms); });
     const ids=Object.keys(latest).filter(id=> now-latest[id] < FRESH);
-    if(!ids.length) return 0;
+    if(!ids.length){ tcStat(S_none,'#6B7280'); return 0; }
     let n=0;
     await Promise.allSettled(ids.map(async id=>{
       let spec; try{ spec=await getJSON('https://www.jma.go.jp/bosai/typhoon/data/'+id+'/specifications.json'); }catch(e){ return; }
       const pts=extractTyphoonPoints(spec);
       if(pts.length){ drawTyphoon(id, tcName(spec,id), pts); n++; }
     }));
+    if(n>0){ const a=LANG==='ja'?(n+'個 活動中'):LANG==='es'?(n+' activo(s)'):(n+' active'); tcStat(a,'#EC4899'); }
+    else tcStat(S_nod,'#F59E0B');
     return n;
   }
 
@@ -744,11 +750,11 @@ if(typeof L==='undefined'){
     drawVolcanoes(elevated);
     let qn=0; try{ qn=await loadQuakes(); }catch(e){}
     let jn=0; try{ jn=await loadJapanQuakes(); }catch(e){}
-    try{ await loadTyphoons(); }catch(e){}
+    let tn=0; try{ tn=await loadTyphoons(); }catch(e){ tn=-1; }
     loadTsunami();
     loadHisayama();
     if(map.hasLayer(planeLayer)) loadPlanes();
-    setStatus(t('stCounts',{v:VOLC.length,q:qn,j:jn,t:new Date().toLocaleTimeString([],{hour12:false})}));
+    setStatus(t('stCounts',{v:VOLC.length,q:qn,j:jn,ty:(tn<0?'⚠':tn),t:new Date().toLocaleTimeString([],{hour12:false})}));
   }
   document.getElementById('refreshBtn').addEventListener('click',refreshAll);
   refreshAll();
