@@ -148,7 +148,7 @@
       <div class="row"><span class="sw" style="background:var(--red)"></span> <span data-i18n="legQs">quake &lt;70 km (shallow)</span></div>
       <div class="row"><span class="sw" style="background:var(--amber)"></span> <span data-i18n="legQm">quake 70–300 km</span></div>
       <div class="row"><span class="sw" style="background:var(--blue)"></span> <span data-i18n="legQd">quake &gt;300 km (deep)</span></div>
-      <div class="row"><span style="color:#EC4899">🌀</span> <span data-i18n="legTyph">typhoon track + forecast (JMA, W. Pacific)</span><span id="typhStat" style="font-size:10px;color:#6B7280"></span> <a href="https://typhoon.yahoo.co.jp/weather/jp/typhoon/" target="_blank" rel="noopener" style="font-size:10px;color:#3B82F6">Yahoo!台風 →</a></div>
+      <div class="row"><span style="color:#EC4899">🌀</span> <span data-i18n="legTyph">typhoon track + forecast (JMA, W. Pacific)</span><span id="typhStat" style="font-size:10px;color:#6B7280"></span> <a href="https://typhoon.yahoo.co.jp/weather/jp/typhoon/" target="_blank" rel="noopener" style="font-size:10px;color:#3B82F6">Yahoo!台風 →</a> <a href="https://www.jma.go.jp/bosai/map.html#5/31.6/136.3/&elem=root&typhoon=all&contents=typhoon" target="_blank" rel="noopener" style="font-size:10px;color:#3B82F6">JMA地図 →</a></div>
       <div class="row" style="color:var(--muted)" data-i18n="legNote">○ size ∝ magnitude · ◎ tsunami flag · ▪ JMA 防災 (Japan)</div>
     </div>
   </div>
@@ -754,5 +754,6 @@ if(typeof L==='undefined'){
   refreshAll();
 }
 </script>
+  <div style="position:fixed;bottom:2px;left:50%;transform:translateX(-50%);z-index:500;font:9px/1 ui-monospace,monospace;color:#475569;pointer-events:none">build r18 · 2026-06-01 · typhoon: cache-bust+no-store+#tcdebug</div>
 </body>
 </html>
