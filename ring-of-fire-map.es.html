@@ -652,7 +652,7 @@ if(typeof L==='undefined'){
     const S_none=LANG==='ja'?'活動中の台風なし':LANG==='es'?'sin tifones activos':'none active now';
     const S_off =LANG==='ja'?'配信オフライン（要https）':LANG==='es'?'sin conexión (req. https)':'feed offline (needs https)';
     const S_nod =LANG==='ja'?'台風あり・データ取得不可':LANG==='es'?'activo — sin datos':'active — data unavailable';
-    let idx; try{ idx=await getJSON('https://www.jma.go.jp/bosai/information/data/typhoon.json'); }catch(e){ tcStat(S_off,'#F59E0B'); return 0; }
+    let idx; try{ idx=await getJSON('https://www.jma.go.jp/bosai/information/data/typhoon.json?_='+Date.now()); }catch(e){ tcStat(S_off,'#F59E0B'); return 0; }
     if(!Array.isArray(idx)||!idx.length){ tcStat(S_none,'#6B7280'); return 0; }
     const now=Date.now(), FRESH=36*3600*1000, latest={};
     idx.forEach(o=>{ if(!o||!o.eventId) return; const tms=Date.parse(o.reportDatetime||o.datetime||''); if(isFinite(tms)) latest[o.eventId]=Math.max(latest[o.eventId]||0,tms); });
@@ -660,7 +660,7 @@ if(typeof L==='undefined'){
     if(!ids.length){ tcStat(S_none,'#6B7280'); return 0; }
     let n=0;
     await Promise.allSettled(ids.map(async id=>{
-      let spec; try{ spec=await getJSON('https://www.jma.go.jp/bosai/typhoon/data/'+id+'/specifications.json'); }catch(e){ return; }
+      let spec; try{ spec=await getJSON('https://www.jma.go.jp/bosai/typhoon/data/'+id+'/specifications.json?_='+Date.now()); }catch(e){ return; }
       const pts=extractTyphoonPoints(spec);
       if(pts.length){ drawTyphoon(id, tcName(spec,id), pts); n++; }
     }));
