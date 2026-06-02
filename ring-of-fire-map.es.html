@@ -127,7 +127,7 @@
     <span class="langlinks"><a href="ring-of-fire-map.html">EN</a><a href="ring-of-fire-map.ja.html" lang="ja">日本語</a><a href="ring-of-fire-map.es.html" class="on" lang="es">Español</a></span>
   </nav>
   <span id="status" data-i18n="stInit">initializing…</span>
-  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 19</span>
+  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 21</span>
   <button class="rf" id="refreshBtn" data-i18n="refresh">Refresh</button>
 </header>
 <div id="wrap">
@@ -645,9 +645,9 @@ if(typeof L==='undefined'){
     const S_nod =LANG==='ja'?'台風あり・データ取得不可':LANG==='es'?'activo — sin datos':'active — data unavailable';
     let idx; try{ idx=await getJSON('https://www.jma.go.jp/bosai/information/data/typhoon.json?_='+Date.now()); }catch(e){ tcStat(S_off,'#F59E0B'); if(DBG)showTcDbg(['INDEX FETCH FAILED: '+e.message,'→ CORS/offline; open the live https page in a real browser']); return -1; }
     if(!Array.isArray(idx)||!idx.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['index loaded but EMPTY — no bulletins from JMA']); return 0; }
-    const now=Date.now(), FRESH=36*3600*1000, latest={};
+    const now=Date.now(), FRESH=240*3600*1000, latest={};  /* 10 days: JMA lists only relevant storms; 36h was too strict */
     idx.forEach(o=>{ if(!o||!o.eventId) return; const tms=Date.parse(o.reportDatetime||o.datetime||''); if(isFinite(tms)) latest[o.eventId]=Math.max(latest[o.eventId]||0,tms); });
-    if(DBG){ dbg.push('JMA index entries: '+idx.length); Object.keys(latest).forEach(id=>{ const ageH=((now-latest[id])/3600000).toFixed(1); dbg.push('  '+id+'  '+new Date(latest[id]).toISOString().slice(0,16).replace('T',' ')+'Z  age '+ageH+'h'+(now-latest[id]<FRESH?'  [FRESH]':'  [>36h OLD → filtered]')); }); }
+    if(DBG){ dbg.push('JMA index entries: '+idx.length); Object.keys(latest).forEach(id=>{ const ageH=((now-latest[id])/3600000).toFixed(1); dbg.push('  '+id+'  '+new Date(latest[id]).toISOString().slice(0,16).replace('T',' ')+'Z  age '+ageH+'h'+(now-latest[id]<FRESH?'  [shown]':'  [>10d OLD → filtered]')); }); }
     const ids=Object.keys(latest).filter(id=> now-latest[id] < FRESH);
     if(!ids.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['RESULT: no fresh storm in the index your browser received.','If the only IDs below are weeks old, JMA served a STALE index.',''].concat(dbg)); return 0; }
     let n=0;
@@ -755,6 +755,5 @@ if(typeof L==='undefined'){
   refreshAll();
 }
 </script>
-  <div style="position:fixed;bottom:3px;left:50%;transform:translateX(-50%);z-index:500;font:10px/1 ui-monospace,monospace;color:#94A3B8;pointer-events:none">rev 19 · 2026-06-01</div>
 </body>
 </html>
