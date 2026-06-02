@@ -127,7 +127,7 @@
     <span class="langlinks"><a href="ring-of-fire-map.html">EN</a><a href="ring-of-fire-map.ja.html" lang="ja">日本語</a><a href="ring-of-fire-map.es.html" class="on" lang="es">Español</a></span>
   </nav>
   <span id="status" data-i18n="stInit">initializing…</span>
-  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 24</span>
+  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 25</span>
   <button class="rf" id="refreshBtn" data-i18n="refresh">Refresh</button>
 </header>
 <div id="wrap">
@@ -151,6 +151,7 @@
       <div class="row"><span class="sw" style="background:var(--blue)"></span> <span data-i18n="legQd">quake &gt;300 km (deep)</span></div>
       <div class="row"><span style="color:#EC4899">🌀</span> <span data-i18n="legTyph">typhoon track + forecast (JMA, W. Pacific)</span><span id="typhStat" style="font-size:10px;color:#6B7280"></span> <a href="https://www.jma.go.jp/bosai/map.html#5/31.6/136.3/&elem=root&typhoon=all&contents=typhoon" target="_blank" rel="noopener" style="font-size:10px;color:#3B82F6">JMA地図 →</a></div>
       <div class="row"><span style="color:#F59E0B">🌀</span> <span data-i18n="legNHC">hurricane track + cone (NHC/CPHC → Mexico, US, Hawaii)</span><span id="nhcStat" style="font-size:10px;color:#6B7280"></span> <a href="https://www.nhc.noaa.gov/cyclones/?epac" target="_blank" rel="noopener" style="font-size:10px;color:#3B82F6">NHC →</a></div>
+      <div class="row"><span style="color:#22D3EE">🌊</span> ENSO: <span id="ensoStat" style="color:#9CA3AF">…</span> <a href="https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.shtml" target="_blank" rel="noopener" style="font-size:10px;color:#3B82F6">NOAA →</a></div>
       <div class="row" style="color:var(--muted)" data-i18n="legNote">○ size ∝ magnitude · ◎ tsunami flag · ▪ JMA 防災 (Japan)</div>
     </div>
   </div>
@@ -713,6 +714,22 @@ if(typeof L==='undefined'){
     return n;
   }
 
+  // ── ENSO status (El Niño / La Niña / Neutral) — NOAA CPC ONI, monthly; live fetch w/ dated fallback ──
+  const ENSO_TXT={nino:{en:'El Niño',ja:'エルニーニョ',es:'El Niño'},nina:{en:'La Niña',ja:'ラニーニャ',es:'La Niña'},neu:{en:'Neutral',ja:'中立',es:'Neutral'}};
+  const ENSO_NOW={phase:'neu', note:{en:'El Niño Watch',ja:'エルニーニョ・ウォッチ',es:'Vigilancia de El Niño'}, asof:'May 2026'};  // NOAA CPC — refresh monthly (2nd Thu)
+  function ensoLabel(ph){ const m=ENSO_TXT[ph]||ENSO_TXT.neu; return m[LANG]||m.en; }
+  function ensoColor(ph){ return ph==='nino'?'#F97316':ph==='nina'?'#3B82F6':'#9CA3AF'; }
+  async function loadENSO(){
+    const el=document.getElementById('ensoStat'); if(!el) return;
+    let ph=ENSO_NOW.phase, oni=null, live=false;
+    try{ const r=await fetch('https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt',{cache:'no-store'});
+      if(r.ok){ const rows=(await r.text()).trim().split('\n'); const last=(rows[rows.length-1]||'').trim().split(/\s+/);
+        const a=parseFloat(last[3]); if(isFinite(a)){ oni=a; ph=a>=0.5?'nino':a<=-0.5?'nina':'neu'; live=true; } } }catch(e){}
+    const note=ENSO_NOW.note[LANG]||ENSO_NOW.note.en;
+    el.textContent=ensoLabel(ph)+(live?(' (ONI '+(oni>=0?'+':'')+oni.toFixed(1)+')'):(' · '+note+' · '+ENSO_NOW.asof));
+    el.style.color=ensoColor(ph);
+  }
+
   // Jアラート-class tsunami warnings — JMA 防災 (津波予報) via P2P地震情報, code 552.
   // (Civil-protection / missile alerts have no public API and are intentionally not shown.)
   function loadTsunami(){
@@ -797,6 +814,7 @@ if(typeof L==='undefined'){
     let jn=0; try{ jn=await loadJapanQuakes(); }catch(e){}
     let tn=0; try{ tn=await loadTyphoons(); }catch(e){ tn=-1; }
     try{ await loadNHC(); }catch(e){}
+    loadENSO();
     loadTsunami();
     if(map.hasLayer(planeLayer)) loadPlanes();
     const tyLbl = tn===-1?(LANG==='ja'?'配信不可':LANG==='es'?'sin conexión':'feed offline')
