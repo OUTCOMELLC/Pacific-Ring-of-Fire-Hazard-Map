@@ -127,7 +127,7 @@
     <span class="langlinks"><a href="ring-of-fire-map.html">EN</a><a href="ring-of-fire-map.ja.html" lang="ja">日本語</a><a href="ring-of-fire-map.es.html" class="on" lang="es">Español</a></span>
   </nav>
   <span id="status" data-i18n="stInit">initializing…</span>
-  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 21</span>
+  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 23</span>
   <button class="rf" id="refreshBtn" data-i18n="refresh">Refresh</button>
 </header>
 <div id="wrap">
@@ -149,7 +149,7 @@
       <div class="row"><span class="sw" style="background:var(--red)"></span> <span data-i18n="legQs">quake &lt;70 km (shallow)</span></div>
       <div class="row"><span class="sw" style="background:var(--amber)"></span> <span data-i18n="legQm">quake 70–300 km</span></div>
       <div class="row"><span class="sw" style="background:var(--blue)"></span> <span data-i18n="legQd">quake &gt;300 km (deep)</span></div>
-      <div class="row"><span style="color:#EC4899">🌀</span> <span data-i18n="legTyph">typhoon track + forecast (JMA, W. Pacific)</span><span id="typhStat" style="font-size:10px;color:#6B7280"></span> <a href="https://typhoon.yahoo.co.jp/weather/jp/typhoon/" target="_blank" rel="noopener" style="font-size:10px;color:#3B82F6">Yahoo!台風 →</a> <a href="https://www.jma.go.jp/bosai/map.html#5/31.6/136.3/&elem=root&typhoon=all&contents=typhoon" target="_blank" rel="noopener" style="font-size:10px;color:#3B82F6">JMA地図 →</a></div>
+      <div class="row"><span style="color:#EC4899">🌀</span> <span data-i18n="legTyph">typhoon track + forecast (JMA, W. Pacific)</span><span id="typhStat" style="font-size:10px;color:#6B7280"></span> <a href="https://www.jma.go.jp/bosai/map.html#5/31.6/136.3/&elem=root&typhoon=all&contents=typhoon" target="_blank" rel="noopener" style="font-size:10px;color:#3B82F6">JMA地図 →</a></div>
       <div class="row" style="color:var(--muted)" data-i18n="legNote">○ size ∝ magnitude · ◎ tsunami flag · ▪ JMA 防災 (Japan)</div>
     </div>
   </div>
@@ -213,11 +213,8 @@ const ES={
 Object.keys(ES).forEach(k=>{ if(T[k]) T[k].es=ES[k]; else T[k]={en:ES[k],ja:ES[k],es:ES[k]}; });
 function applyChrome(){ document.documentElement.lang=LANG; document.querySelectorAll('[data-i18n]').forEach(el=>{ el.innerHTML=t(el.dataset.i18n); }); }
 applyChrome();
-// collapsible info panels — collapsed by default (mobile), auto-expanded on wider screens
+// collapsible info panels — collapsed by default on ALL screens; user opens them as needed
 function togglePanel(id){var e=document.getElementById(id); if(e) e.classList.toggle('collapsed');}
-if(!window.matchMedia('(max-width:620px)').matches){
-  ['frame','legend'].forEach(id=>{var e=document.getElementById(id); if(e) e.classList.remove('collapsed');});
-}
 // Pacific-continuous longitude: shift western-Pacific (E) lons by -360 so the whole rim is one
 // unbroken span (~ -240 .. -66) centered on Hawaii. Stops the antimeridian streak across the USA.
 const PL=lo=>lo>20?lo-360:lo;
@@ -727,7 +724,7 @@ if(typeof L==='undefined'){
     const cev=hdr.querySelector('.cev');
     const sync=()=>{ cev.textContent=lc.classList.contains('lyr-min')?'▸':'▾'; };
     L.DomEvent.on(hdr,'click',ev=>{ L.DomEvent.stop(ev); lc.classList.toggle('lyr-min'); sync(); });
-    if(window.matchMedia('(max-width:620px)').matches) lc.classList.add('lyr-min');
+    lc.classList.add('lyr-min'); // closed by default on all screens
     sync();
   })();
 
