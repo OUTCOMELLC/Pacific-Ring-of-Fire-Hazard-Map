@@ -629,23 +629,34 @@ if(typeof L==='undefined'){
       html:'<div style="font-size:'+sz+'px;line-height:1;color:'+tcColor(cur.kt)+';text-shadow:0 0 4px #000,0 0 2px #000">🌀</div>'})}).addTo(typhoonLayer).bindPopup(tcPopup(name,cur,true));
   }
   function tcStat(txt,col){ const el=document.getElementById('typhStat'); if(el){ el.textContent=txt?(' · '+txt):''; el.style.color=col||'#6B7280'; } }
+  function showTcDbg(lines){
+    let el=document.getElementById('tcdbg');
+    if(!el){ el=document.createElement('div'); el.id='tcdbg';
+      el.style.cssText='position:fixed;left:8px;bottom:8px;z-index:99999;max-width:92vw;max-height:55vh;overflow:auto;background:#0B0F19;color:#D1D5DB;border:1px solid #FB8102;border-radius:8px;padding:10px 12px;font:11px/1.55 ui-monospace,monospace;white-space:pre-wrap;box-shadow:0 4px 22px #000';
+      document.body.appendChild(el); }
+    el.textContent='🌀 TYPHOON DEBUG  (remove #tcdebug from URL to hide)\n'+lines.join('\n');
+  }
   async function loadTyphoons(){
     typhoonLayer.clearLayers();
+    const DBG=/tcdebug/i.test(location.hash||''); const dbg=[];
     const S_none=LANG==='ja'?'活動中の台風なし':LANG==='es'?'sin tifones activos':'none active now';
     const S_off =LANG==='ja'?'配信オフライン（要https）':LANG==='es'?'sin conexión (req. https)':'feed offline (needs https)';
     const S_nod =LANG==='ja'?'台風あり・データ取得不可':LANG==='es'?'activo — sin datos':'active — data unavailable';
-    let idx; try{ idx=await getJSON('https://www.jma.go.jp/bosai/information/data/typhoon.json?_='+Date.now()); }catch(e){ tcStat(S_off,'#F59E0B'); return -1; }
-    if(!Array.isArray(idx)||!idx.length){ tcStat(S_none,'#6B7280'); return 0; }
+    let idx; try{ idx=await getJSON('https://www.jma.go.jp/bosai/information/data/typhoon.json?_='+Date.now()); }catch(e){ tcStat(S_off,'#F59E0B'); if(DBG)showTcDbg(['INDEX FETCH FAILED: '+e.message,'→ CORS/offline; open the live https page in a real browser']); return -1; }
+    if(!Array.isArray(idx)||!idx.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['index loaded but EMPTY — no bulletins from JMA']); return 0; }
     const now=Date.now(), FRESH=36*3600*1000, latest={};
     idx.forEach(o=>{ if(!o||!o.eventId) return; const tms=Date.parse(o.reportDatetime||o.datetime||''); if(isFinite(tms)) latest[o.eventId]=Math.max(latest[o.eventId]||0,tms); });
+    if(DBG){ dbg.push('JMA index entries: '+idx.length); Object.keys(latest).forEach(id=>{ const ageH=((now-latest[id])/3600000).toFixed(1); dbg.push('  '+id+'  '+new Date(latest[id]).toISOString().slice(0,16).replace('T',' ')+'Z  age '+ageH+'h'+(now-latest[id]<FRESH?'  [FRESH]':'  [>36h OLD → filtered]')); }); }
     const ids=Object.keys(latest).filter(id=> now-latest[id] < FRESH);
-    if(!ids.length){ tcStat(S_none,'#6B7280'); return 0; }
+    if(!ids.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['RESULT: no fresh storm in the index your browser received.','If the only IDs below are weeks old, JMA served a STALE index.',''].concat(dbg)); return 0; }
     let n=0;
     await Promise.allSettled(ids.map(async id=>{
-      let spec; try{ spec=await getJSON('https://www.jma.go.jp/bosai/typhoon/data/'+id+'/specifications.json?_='+Date.now()); }catch(e){ return; }
+      let spec; try{ spec=await getJSON('https://www.jma.go.jp/bosai/typhoon/data/'+id+'/specifications.json?_='+Date.now()); }catch(e){ if(DBG)dbg.push(id+'  SPECS FETCH ERR: '+e.message); return; }
       const pts=extractTyphoonPoints(spec);
+      if(DBG)dbg.push(id+'  specs ok · points='+pts.length+(pts[0]?(' · first '+pts[0].lat.toFixed(1)+'N '+pts[0].lon.toFixed(1)+'E'):'')+'\n     top keys: '+Object.keys(spec||{}).slice(0,10).join(', '));
       if(pts.length){ drawTyphoon(id, tcName(spec,id), pts); n++; }
     }));
+    if(DBG)showTcDbg(['RESULT: '+n+' storm(s) drawn.',(n===0?'Storm IS in the index but parsed to 0 points → parser/structure issue (keys shown below).':''),''].concat(dbg));
     if(n>0){ const a=LANG==='ja'?(n+'個 活動中'):LANG==='es'?(n+' activo(s)'):(n+' active'); tcStat(a,'#EC4899'); return n; }
     tcStat(S_nod,'#F59E0B'); return -2;
   }
