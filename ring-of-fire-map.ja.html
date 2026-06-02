@@ -127,7 +127,7 @@
     <span class="langlinks"><a href="ring-of-fire-map.html">EN</a><a href="ring-of-fire-map.ja.html" class="on" lang="ja">日本語</a><a href="ring-of-fire-map.es.html" lang="es">Español</a></span>
   </nav>
   <span id="status" data-i18n="stInit">initializing…</span>
-  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 23</span>
+  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 24</span>
   <button class="rf" id="refreshBtn" data-i18n="refresh">Refresh</button>
 </header>
 <div id="wrap">
@@ -150,6 +150,7 @@
       <div class="row"><span class="sw" style="background:var(--amber)"></span> <span data-i18n="legQm">quake 70–300 km</span></div>
       <div class="row"><span class="sw" style="background:var(--blue)"></span> <span data-i18n="legQd">quake &gt;300 km (deep)</span></div>
       <div class="row"><span style="color:#EC4899">🌀</span> <span data-i18n="legTyph">typhoon track + forecast (JMA, W. Pacific)</span><span id="typhStat" style="font-size:10px;color:#6B7280"></span> <a href="https://www.jma.go.jp/bosai/map.html#5/31.6/136.3/&elem=root&typhoon=all&contents=typhoon" target="_blank" rel="noopener" style="font-size:10px;color:#3B82F6">JMA地図 →</a></div>
+      <div class="row"><span style="color:#F59E0B">🌀</span> <span data-i18n="legNHC">hurricane track + cone (NHC/CPHC → Mexico, US, Hawaii)</span><span id="nhcStat" style="font-size:10px;color:#6B7280"></span> <a href="https://www.nhc.noaa.gov/cyclones/?epac" target="_blank" rel="noopener" style="font-size:10px;color:#3B82F6">NHC →</a></div>
       <div class="row" style="color:var(--muted)" data-i18n="legNote">○ size ∝ magnitude · ◎ tsunami flag · ▪ JMA 防災 (Japan)</div>
     </div>
   </div>
@@ -183,6 +184,8 @@ const T={
   lyrHdr:{en:'🗂 Map layers',ja:'🗂 地図レイヤー'},
   lyTyph:{en:'🌀 Typhoons (JMA RSMC)',ja:'🌀 台風（JMA RSMC）'},
   legTyph:{en:'🌀 typhoon track + forecast (JMA, W. Pacific)',ja:'🌀 台風の経路＋予報（JMA・西太平洋）'},
+  lyNHC:{en:'🌀 Hurricanes (NHC/CPHC E·C Pacific)',ja:'🌀 ハリケーン（NHC/CPHC 東・中部太平洋）'},
+  legNHC:{en:'🌀 hurricane track + cone (NHC/CPHC → Mexico, US, Hawaii)',ja:'🌀 ハリケーンの経路＋予報円（NHC/CPHC → メキシコ・米国・ハワイ）'},
 };
 function t(k,v){ let s=(T[k]&&(T[k][LANG]||T[k].en))||k; if(v) for(const x in v) s=s.replace('{'+x+'}',v[x]); return s; }
 const ES={
@@ -209,6 +212,8 @@ const ES={
   lyrHdr:'🗂 Capas del mapa',
   lyTyph:'🌀 Tifones (JMA RSMC)',
   legTyph:'🌀 trayectoria + pronóstico de tifón (JMA, Pac. occ.)',
+  lyNHC:'🌀 Huracanes (NHC/CPHC Pac. E·C)',
+  legNHC:'🌀 trayectoria + cono de huracán (NHC/CPHC → México, EE. UU., Hawái)',
 };
 Object.keys(ES).forEach(k=>{ if(T[k]) T[k].es=ES[k]; else T[k]={en:ES[k],ja:ES[k],es:ES[k]}; });
 function applyChrome(){ document.documentElement.lang=LANG; document.querySelectorAll('[data-i18n]').forEach(el=>{ el.innerHTML=t(el.dataset.i18n); }); }
@@ -361,7 +366,7 @@ if(typeof L==='undefined'){
     html:`<div style="transform:rotate(${(h||0)-45}deg);font-size:13px;color:${C.teal};text-shadow:0 0 2px #000">✈</div>`});
 
   const volcLayer=L.layerGroup(), quakeLayer=L.layerGroup(), rofLayer=L.layerGroup(),
-        buoyLayer=L.layerGroup(), cityLayer=L.layerGroup(), planeLayer=L.layerGroup(), platformLayer=L.layerGroup(), gridLayer=L.layerGroup(), idlLayer=L.layerGroup(), jpqLayer=L.layerGroup(), typhoonLayer=L.layerGroup();
+        buoyLayer=L.layerGroup(), cityLayer=L.layerGroup(), planeLayer=L.layerGroup(), platformLayer=L.layerGroup(), gridLayer=L.layerGroup(), idlLayer=L.layerGroup(), jpqLayer=L.layerGroup(), typhoonLayer=L.layerGroup(), nhcLayer=L.layerGroup();
 
   // Ring of Fire schematic
   L.polyline(ROF.map(p=>[p[0],PL(p[1])]),{color:C.orange,weight:1.5,dashArray:'7 7',opacity:.55}).addTo(rofLayer);
@@ -659,6 +664,55 @@ if(typeof L==='undefined'){
     tcStat(S_nod,'#F59E0B'); return -2;
   }
 
+  // ── East/Central Pacific hurricanes (NHC + CPHC) — toward Mexico, US West Coast & Hawaii ──
+  // NOAA ArcGIS tropical summary service (geoJSON, CORS-open). Pacific basins only (idp_source ep/cp).
+  const NHC_BASE='https://mapservices.weather.noaa.gov/tropical/rest/services/tropical/NHC_tropical_weather_summary/MapServer';
+  const NHCC='#F59E0B';
+  function nhcGet(o,keys){ if(!o)return null; for(const k of keys){ for(const kk in o){ if(kk.toLowerCase()===k && o[kk]!=null && o[kk]!=='') return o[kk]; } } return null; }
+  function nhcBasin(p){ const s=(''+(nhcGet(p,['idp_source','stormid','atcf'])||'')).toLowerCase(); if(/^(ep|cp)/.test(s))return 'pac'; if(/^(al|at)/.test(s))return 'atl'; return '?'; }
+  function nhcName(p){ const nm=nhcGet(p,['stormname','tcname']); const cls=(''+(nhcGet(p,['dvlbl','stormtype'])||'')).trim(); const w=nhcGet(p,['idp_source','stormid']); return nm?((cls?cls+' ':'')+nm):(w?(''+w).toUpperCase():'Storm'); }
+  function nhcNum(v){ const n=parseFloat(v); return isFinite(n)?n:null; }
+  function nhcLL(c){ return [c[1], PL(c[0])]; }
+  function nhcPac(f){ const b=nhcBasin(f.properties||{}); if(b==='pac')return true; if(b==='atl')return false; let lon=null,g=f.geometry; try{ if(g.type==='Point')lon=g.coordinates[0]; else if(g.type==='LineString')lon=g.coordinates[0][0]; else if(g.type==='MultiLineString')lon=g.coordinates[0][0][0]; else if(g.type==='Polygon')lon=g.coordinates[0][0][0]; else if(g.type==='MultiPolygon')lon=g.coordinates[0][0][0][0]; }catch(e){} return lon!=null&&lon<=-80&&lon>=-180; }
+  function nhcStat(txt,col){ const el=document.getElementById('nhcStat'); if(el){ el.textContent=txt?(' · '+txt):''; el.style.color=col||'#6B7280'; } }
+  function nhcPopup(P,isCur){
+    const Lpos=LANG==='ja'?'位置':LANG==='es'?'posición':'position', Lwd=LANG==='ja'?'最大風速':LANG==='es'?'viento máx.':'max wind',
+          Lpr=LANG==='ja'?'中心気圧':LANG==='es'?'presión':'pressure', Lfc=LANG==='ja'?'予報':LANG==='es'?'pronóstico':'forecast';
+    const p=P.props, mph=nhcNum(nhcGet(p,['maxwind','intensity'])), mslp=nhcNum(nhcGet(p,['mslp','minsealevelpres'])), dt=nhcGet(p,['fldatelbl','datelbl','advdate','date']);
+    const L2=[]; L2.push('<b>🌀 '+nhcName(p)+'</b>'+(isCur?'':' <span style="color:'+C.dim+'">('+Lfc+')</span>'));
+    if(dt) L2.push(''+dt);
+    if(mph!=null) L2.push(Lwd+' '+mph+' mph');
+    if(mslp!=null) L2.push(Lpr+' '+mslp+' mb');
+    L2.push('<span style="color:'+C.dim+'">'+Lpos+': '+P.lat.toFixed(1)+'°N '+Math.abs(P.lon).toFixed(1)+'°W</span>');
+    L2.push('<a href="https://www.nhc.noaa.gov/cyclones/?epac" target="_blank" rel="noopener" style="color:'+C.blue+'">NHC / CPHC →</a>');
+    L2.push('<span style="color:#6B7280">NOAA NHC · CPHC</span>');
+    return L2.join('<br>');
+  }
+  function nhcLine(f){ const g=f.geometry; if(!g)return; const ls=g.type==='MultiLineString'?g.coordinates:[g.coordinates]; ls.forEach(ln=>{ const ll=ln.map(nhcLL); if(ll.length>1) L.polyline(ll,{color:NHCC,weight:2,dashArray:'5,5',opacity:.85}).addTo(nhcLayer); }); }
+  function nhcPoly(f){ const g=f.geometry; if(!g)return; const ps=g.type==='MultiPolygon'?g.coordinates:[g.coordinates]; ps.forEach(rings=>{ try{ L.polygon(rings.map(r=>r.map(nhcLL)),{color:NHCC,weight:1,dashArray:'4,4',fillColor:NHCC,fillOpacity:.05,opacity:.4}).addTo(nhcLayer); }catch(e){} }); }
+  function nhcPts(feats){ const tau=f=>{ const v=nhcNum(nhcGet(f.properties,['tau','fcsthr','fcstprd'])); return v==null?9999:v; }; feats.sort((a,b)=>tau(a)-tau(b));
+    feats.forEach((f,i)=>{ const g=f.geometry; if(!g||g.type!=='Point')return; const lon=g.coordinates[0],lat=g.coordinates[1], P={lat:lat,lon:lon,props:f.properties||{}};
+      if(i===0){ const mph=nhcNum(nhcGet(f.properties,['maxwind','intensity'])), kt=mph!=null?mph*0.868976:null, sz=kt!=null?Math.max(20,Math.min(40,18+kt/5)):24;
+        L.marker(nhcLL(g.coordinates),{zIndexOffset:900,icon:L.divIcon({className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],html:'<div style="font-size:'+sz+'px;line-height:1;color:'+(kt!=null&&kt>=64?'#EF4444':NHCC)+';text-shadow:0 0 4px #000,0 0 2px #000">🌀</div>'})}).addTo(nhcLayer).bindPopup(nhcPopup(P,true)); }
+      else L.circleMarker(nhcLL(g.coordinates),{radius:4,color:NHCC,weight:1.5,fillColor:'#0B0F19',fillOpacity:1}).addTo(nhcLayer).bindPopup(nhcPopup(P,false)); }); }
+  async function loadNHC(){
+    if(typeof nhcLayer==='undefined')return 0; nhcLayer.clearLayers();
+    const DBG=/nhcdebug/i.test(location.hash||''); const dbg=[];
+    let meta; try{ meta=await getJSON(NHC_BASE+'?f=json&_='+Date.now()); }catch(e){ nhcStat(LANG==='ja'?'配信不可':LANG==='es'?'sin conexión':'feed offline','#F59E0B'); if(DBG)showTcDbg(['NHC META FETCH FAILED: '+e.message,'(CORS or offline — NHC/CPHC layer)']); return -1; }
+    const layers=(meta&&meta.layers)||[]; if(DBG)dbg.push('layers: '+layers.map(l=>l.id+':'+l.name).join(' | '));
+    const findId=re=>{ const x=layers.find(l=>re.test(l.name||'')); return x?x.id:null; };
+    const idTrack=findId(/forecast track/i), idPts=findId(/forecast point/i), idCone=findId(/forecast cone/i);
+    const q=async id=>{ if(id==null)return null; try{ return await getJSON(NHC_BASE+'/'+id+'/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=4326&f=geojson&_='+Date.now()); }catch(e){ if(DBG)dbg.push('layer '+id+' ERR '+e.message); return null; } };
+    const res=await Promise.all([q(idCone),q(idTrack),q(idPts)]); const cone=res[0],track=res[1],pts=res[2];
+    let n=0;
+    if(cone&&cone.features) cone.features.filter(nhcPac).forEach(nhcPoly);
+    if(track&&track.features) track.features.filter(nhcPac).forEach(nhcLine);
+    if(pts&&pts.features){ const byS={}; pts.features.filter(nhcPac).forEach(f=>{ const k=(nhcGet(f.properties,['idp_source','stormid','stormname'])||'?')+''; (byS[k]=byS[k]||[]).push(f); }); Object.keys(byS).forEach(k=>{ nhcPts(byS[k]); n++; }); }
+    if(DBG)showTcDbg(['NHC/CPHC E·C Pacific storms drawn: '+n,'(toward Mexico / US / Hawaii)',''].concat(dbg));
+    nhcStat(n>0?(LANG==='ja'?(n+'個 活動中'):LANG==='es'?(n+' activo(s)'):(n+' active')):(LANG==='ja'?'活動なし':LANG==='es'?'ninguno':'none active'), n>0?NHCC:'#6B7280');
+    return n;
+  }
+
   // Jアラート-class tsunami warnings — JMA 防災 (津波予報) via P2P地震情報, code 552.
   // (Civil-protection / missile alerts have no public API and are intentionally not shown.)
   function loadTsunami(){
@@ -713,7 +767,8 @@ if(typeof L==='undefined'){
     [t('lyPlat')]:platformLayer,
     [t('lyCity')]:cityLayer,
     [t('lyPlane')]:planeLayer,
-    [t('lyTyph')]:typhoonLayer
+    [t('lyTyph')]:typhoonLayer,
+    [t('lyNHC')]:nhcLayer
   },{collapsed:false}).addTo(map);
   // Collapsible header so the layers panel can be closed/opened (matches Framing/Legend)
   (function(){
@@ -729,7 +784,7 @@ if(typeof L==='undefined'){
   })();
 
   // default-on layers
-  [gridLayer,idlLayer,volcLayer,quakeLayer,jpqLayer,rofLayer,buoyLayer,platformLayer,cityLayer,typhoonLayer].forEach(l=>l.addTo(map));
+  [gridLayer,idlLayer,volcLayer,quakeLayer,jpqLayer,rofLayer,buoyLayer,platformLayer,cityLayer,typhoonLayer,nhcLayer].forEach(l=>l.addTo(map));
 
   map.on('overlayadd',e=>{ if(e.layer===planeLayer) loadPlanes(); });
 
@@ -741,6 +796,7 @@ if(typeof L==='undefined'){
     let qn=0; try{ qn=await loadQuakes(); }catch(e){}
     let jn=0; try{ jn=await loadJapanQuakes(); }catch(e){}
     let tn=0; try{ tn=await loadTyphoons(); }catch(e){ tn=-1; }
+    try{ await loadNHC(); }catch(e){}
     loadTsunami();
     if(map.hasLayer(planeLayer)) loadPlanes();
     const tyLbl = tn===-1?(LANG==='ja'?'配信不可':LANG==='es'?'sin conexión':'feed offline')
