@@ -397,7 +397,8 @@ if(typeof L==='undefined'){
     .bindTooltip(n,{direction:'top',className:'vlabel'}).addTo(cityLayer));
 
   // Hisayama (久山町, Fukuoka) — property location; JMA 防災 (bosai) forecast for the Fukuoka area
-  const HISALINK='<a href="https://www.town.hisayama.fukuoka.jp/gyosei/kurashi/anzen_anshin/bosai/2062.html" target="_blank" rel="noopener" style="color:#3B82F6">久山町防災情報 →</a>';
+  const HISALINK='<a href="https://www.town.hisayama.fukuoka.jp/gyosei/kurashi/anzen_anshin/bosai/2062.html" target="_blank" rel="noopener" style="color:#3B82F6">久山町防災情報 →</a>'
+    +'<br><a href="https://www.bousai.pref.fukuoka.jp/evacuation/kasuya-gun-hisayama-machi/" target="_blank" rel="noopener" style="color:#3B82F6">福岡県 避難情報（久山町）→</a>';
   const hisayamaMarker=L.marker([33.613,PL(130.483)],{icon:L.divIcon({className:'',iconSize:[16,16],iconAnchor:[8,8],
     html:`<div style="font-size:14px;filter:drop-shadow(0 0 2px #000)">🏠</div>`})})
     .bindTooltip('久山 Hisayama 防災',{direction:'top',className:'vlabel'})
@@ -409,7 +410,7 @@ if(typeof L==='undefined'){
       const body=(d.text||'').replace(/\u3000/g,' ').replace(/\n/g,'<br>');
       hisayamaMarker.setPopupContent(`<b>久山町 Hisayama · 防災</b><br>`+
         `<span style="color:#6B7280">${d.publishingOffice||'気象庁'} · ${d.reportDatetime?new Date(d.reportDatetime).toLocaleString([],{hour12:false}):''}</span><br>`+
-        head+body+`<br><a href="https://www.jma.go.jp/bosai/#area_type=class20s&area_code=4034800" target="_blank">JMA 防災 →</a>`+'<br>'+HISALINK);
+        head+body+`<br><a href="https://www.jma.go.jp/bosai/forecast/#area_type=offices&area_code=400000" target="_blank">JMA 防災 →</a>`+'<br>'+HISALINK);
     }catch(e){
       hisayamaMarker.setPopupContent('<b>久山町 Hisayama</b><br><span style="color:#6B7280">防災 feed unavailable — host over https</span><br>'+HISALINK);
     }

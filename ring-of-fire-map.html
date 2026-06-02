@@ -410,7 +410,7 @@ if(typeof L==='undefined'){
       const body=(d.text||'').replace(/\u3000/g,' ').replace(/\n/g,'<br>');
       hisayamaMarker.setPopupContent(`<b>久山町 Hisayama · 防災</b><br>`+
         `<span style="color:#6B7280">${d.publishingOffice||'気象庁'} · ${d.reportDatetime?new Date(d.reportDatetime).toLocaleString([],{hour12:false}):''}</span><br>`+
-        head+body+`<br><a href="https://www.jma.go.jp/bosai/#area_type=class20s&area_code=4034800" target="_blank">JMA 防災 →</a>`+'<br>'+HISALINK);
+        head+body+`<br><a href="https://www.jma.go.jp/bosai/forecast/#area_type=offices&area_code=400000" target="_blank">JMA 防災 →</a>`+'<br>'+HISALINK);
     }catch(e){
       hisayamaMarker.setPopupContent('<b>久山町 Hisayama</b><br><span style="color:#6B7280">防災 feed unavailable — host over https</span><br>'+HISALINK);
     }
