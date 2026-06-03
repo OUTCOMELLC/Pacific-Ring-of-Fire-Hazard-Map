@@ -603,10 +603,13 @@ function moonPhase(date){
 }
 // Approximate solunar feeding periods (local-clock, lunar-transit model).
 function fmtH(h){h=((h%24)+24)%24;const hh=Math.floor(h),mm=Math.round((h-hh)*60)%60;return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');}
-function solunar(age){
-  const up=(12+age*24/29.530588853)%24;          // moon overhead (upper transit) ~local time
-  const low=(up+12.42)%24;                         // moon underfoot (lower transit)
-  const majors=[up,low].sort((a,b)=>a-b);          // major feeding periods
+function tzOffH(tz){ try{ const t=Date.now(); const u=new Date(new Date(t).toLocaleString('en-US',{timeZone:'UTC'})); const l=new Date(new Date(t).toLocaleString('en-US',{timeZone:tz})); return (l-u)/3600000; }catch(e){ return 0; } }
+function solunar(age, lon, tzH){
+  // local-clock lunar upper transit, localized: corr = zone offset − longitude/15 (DST-aware via tzH)
+  const corr=(tzH||0)-(lon||0)/15;
+  const up=(12+age*24/29.530588853+corr+48)%24;    // moon overhead (upper transit), local clock
+  const low=(up+12.42)%24;                          // moon underfoot (lower transit)
+  const majors=[up,low].sort((a,b)=>a-b);           // major feeding periods
   const minors=[(up+6.21)%24,(up-6.21+24)%24].sort((a,b)=>a-b); // ~moonrise / moonset
   return {majors,minors};
 }
@@ -799,7 +802,7 @@ function renderCard(L, data){
   const moon=moonPhase(new Date());
   // angler layer: sea-surface temp, solunar feeding windows, lunar-tidal spawning cue
   const sst = M&&M.current ? M.current.sea_surface_temperature : null;
-  const sol = solunar(moon.age);
+  const sol = solunar(moon.age, L.lon, tzOffH(L.tz));
   const majTxt = `${fmtH(sol.majors[0])} · ${fmtH(sol.majors[1])}`;
   const minTxt = `${fmtH(sol.minors[0])} · ${fmtH(sol.minors[1])}`;
   let spawnCls='ok', spawnMsg;
