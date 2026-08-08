@@ -135,7 +135,7 @@ const T={
   stampOffline:{en:'no live wave data (offline?) — positions shown',ja:'波浪データなし（オフライン？）— 位置のみ表示'},
   pSig:{en:'Sig. wave Hs',ja:'有義波高'},pPeriod:{en:'Wave period',ja:'波周期'},pDir:{en:'Wave dir',ja:'波向'},pSwell:{en:'Swell Hs',ja:'うねり高'},pSwellP:{en:'Swell period',ja:'うねり周期'},pSwellD:{en:'Swell dir',ja:'うねり向'},pWindWave:{en:'Wind-wave Hs',ja:'風波高'},
   pNoData:{en:'No live wave data — needs an https connection',ja:'波浪データなし — https接続が必要'},
-  view_ov:{en:'N. Pacific overview',ja:'北太平洋 全体'},view_hi:{en:'Hawaiʻi',ja:'ハワイ'},view_sc:{en:'S. California',ja:'南カリフォルニア'},view_jp:{en:'Japan · Okinawa',ja:'日本 ・ 沖縄'},view_gu:{en:'Guam · Marianas',ja:'グアム ・ マリアナ'},view_wc:{en:'U.S. West Coast',ja:'米国西海岸'},view_ak:{en:'Alaska & N. Pacific',ja:'アラスカ・北太平洋'},view_dart:{en:'DART tsunami buoys',ja:'DART 津波ブイ'},
+  view_ov:{en:'N. Pacific overview',ja:'北太平洋 全体'},view_hi:{en:'Hawaiʻi',ja:'ハワイ'},view_sc:{en:'S. California',ja:'南カリフォルニア'},view_jp:{en:'Japan · Okinawa',ja:'日本 ・ 沖縄'},view_gu:{en:'Guam · Marianas',ja:'グアム ・ マリアナ'},view_wc:{en:'U.S. West Coast',ja:'米国西海岸'},view_gm:{en:'Gulf of America · SE US',ja:'メキシコ湾・米南東岸'},view_ak:{en:'Alaska & N. Pacific',ja:'アラスカ・北太平洋'},view_dart:{en:'DART tsunami buoys',ja:'DART 津波ブイ'},
 };
 function t(k,v){ let s=(T[k]&&(T[k][LANG]||T[k].en))||k; if(v) for(const x in v) s=s.replace('{'+x+'}',v[x]); return s; }
 const ES={
@@ -152,7 +152,7 @@ const ES={
   stampOffline:'sin datos de olas en vivo (¿sin conexión?) — se muestran posiciones',
   pSig:'Altura sign. ola',pPeriod:'Período de ola',pDir:'Dirección de ola',pSwell:'Altura marejada',pSwellP:'Período marejada',pSwellD:'Dirección marejada',pWindWave:'Altura ola de viento',
   pNoData:'Sin datos de olas en vivo — requiere conexión https',
-  view_ov:'Pacífico Norte (general)',view_hi:'Hawái',view_sc:'Sur de California',view_jp:'Japón · Okinawa',view_gu:'Guam · Marianas',view_wc:'Costa Oeste de EE. UU.',view_ak:'Alaska y Pac. Norte',view_dart:'Boyas de tsunami DART',
+  view_ov:'Pacífico Norte (general)',view_hi:'Hawái',view_sc:'Sur de California',view_jp:'Japón · Okinawa',view_gu:'Guam · Marianas',view_wc:'Costa Oeste de EE. UU.',view_gm:'Golfo de América · SE EE. UU.',view_ak:'Alaska y Pac. Norte',view_dart:'Boyas de tsunami DART',
 };
 Object.keys(ES).forEach(k=>{ if(T[k]) T[k].es=ES[k]; else T[k]={en:ES[k],ja:ES[k],es:ES[k]}; });
 function applyChrome(){ document.documentElement.lang=LANG; document.querySelectorAll('[data-i18n]').forEach(el=>{ el.innerHTML=t(el.dataset.i18n); }); }
@@ -207,6 +207,19 @@ const BUOYS=[
   {id:'21415',nm:'S of Attu',la:50.120,lo:171.867,rg:'dart',dt:1},{id:'21416',nm:'SE of Kamchatka',la:48.126,lo:163.355,rg:'dart',dt:1},
   {id:'51407',nm:'Hawaiʻi (W of Kona)',la:19.530,lo:-156.601,rg:'dart',dt:1},{id:'32411',nm:'West Panama',la:4.979,lo:-90.793,rg:'dart',dt:1},
   {id:'32401',nm:'W of Iquique, Chile',la:-20.611,lo:-73.394,rg:'dart',dt:1},{id:'32402',nm:'W of Caldera, Chile',la:-26.743,lo:-73.983,rg:'dart',dt:1},
+  // ── Gulf of America + SE US Atlantic coast (NDBC real ●) ──
+  {id:'42001',nm:'Mid Gulf',la:25.90,lo:-89.66,rg:'gm'},{id:'42002',nm:'W Gulf',la:26.09,lo:-93.76,rg:'gm'},
+  {id:'42003',nm:'E Gulf',la:25.93,lo:-85.62,rg:'gm'},{id:'42039',nm:'Pensacola, FL',la:28.79,lo:-86.01,rg:'gm'},
+  {id:'42040',nm:'Mobile S, AL',la:29.21,lo:-88.21,rg:'gm'},{id:'42012',nm:'Orange Beach, AL',la:30.06,lo:-87.55,rg:'gm'},
+  {id:'42036',nm:'W Tampa, FL',la:28.50,lo:-84.52,rg:'gm'},{id:'42035',nm:'Galveston, TX',la:29.23,lo:-94.41,rg:'gm'},
+  {id:'42019',nm:'Freeport, TX',la:27.91,lo:-95.35,rg:'gm'},{id:'42020',nm:'Corpus Christi, TX',la:26.97,lo:-96.69,rg:'gm'},
+  {id:'42055',nm:'Bay of Campeche',la:22.12,lo:-94.05,rg:'gm'},
+  {id:'41009',nm:'Cape Canaveral, FL',la:28.52,lo:-80.18,rg:'gm'},{id:'41010',nm:'Canaveral East',la:28.88,lo:-78.49,rg:'gm'},
+  {id:'41114',nm:'Fort Pierce, FL',la:27.55,lo:-80.22,rg:'gm'},{id:'41117',nm:'St Augustine, FL',la:29.99,lo:-81.08,rg:'gm'},
+  {id:'41112',nm:'Fernandina Beach, FL',la:30.71,lo:-81.29,rg:'gm'},{id:'41008',nm:'Grays Reef, GA',la:31.40,lo:-80.87,rg:'gm'},
+  {id:'41004',nm:'Edisto, SC',la:32.50,lo:-79.10,rg:'gm'},{id:'41013',nm:'Frying Pan Shoals, NC',la:33.44,lo:-77.74,rg:'gm'},
+  {id:'41025',nm:'Diamond Shoals, NC',la:35.01,lo:-75.40,rg:'gm'},{id:'41002',nm:'S Hatteras',la:31.76,lo:-74.84,rg:'gm'},
+  {id:'41001',nm:'E Hatteras',la:34.72,lo:-72.32,rg:'gm'},
   {id:'32301',nm:'E Pacific (equatorial)',la:-9.900,lo:-105.200,rg:'dart',dt:1},{id:'32302',nm:'SE Pacific',la:-18.000,lo:-85.100,rg:'dart',dt:1},
   // --- More Japan / W. Pacific (approx NOWPHAS / coastal) ---
   {id:'~WJM',nm:'Wajima · Noto 輪島',la:37.45,lo:136.90,rg:'jp',ap:1},{id:'~NIG',nm:'Niigata 新潟',la:38.05,lo:139.10,rg:'jp',ap:1},
@@ -225,6 +238,7 @@ const VIEWS={
   hi:{name:'Hawaiʻi',             b:[[16.5,-163],[25,-152]]},
   sc:{name:'S. California',       b:[[31.6,-121.6],[35.4,-116.8]]},
   wc:{name:'U.S. West Coast',     b:[[35,-132],[49,-116]]},
+  gm:{name:'Gulf of America · SE US', b:[[21,-98],[36,-72]]},
   ak:{name:'Alaska & N. Pacific', b:[[50,-187],[61.5,-145]]},
   jp:{name:'Japan · Okinawa',     b:[[23,-237],[39.5,-217]]},
   gu:{name:'Guam · Marianas',     b:[[7,-217],[17,-191]]},
@@ -415,11 +429,12 @@ function flyTo(key){
     const S_nod =LANG==='ja'?'台風あり・データ取得不可':LANG==='es'?'activo — sin datos':'active — data unavailable';
     let idx; try{ idx=await getJSON('https://www.jma.go.jp/bosai/information/data/typhoon.json?_='+Date.now()); }catch(e){ tcStat(S_off,'#F59E0B'); if(DBG)showTcDbg(['INDEX FETCH FAILED: '+e.message,'→ CORS/offline; open the live https page in a real browser']); return -1; }
     if(!Array.isArray(idx)||!idx.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['index loaded but EMPTY — no bulletins from JMA']); return 0; }
-    const now=Date.now(), FRESH=240*3600*1000, latest={};  /* 10 days: JMA lists only relevant storms; 36h was too strict */
-    idx.forEach(o=>{ if(!o||!o.eventId) return; const tms=Date.parse(o.reportDatetime||o.datetime||''); if(isFinite(tms)) latest[o.eventId]=Math.max(latest[o.eventId]||0,tms); });
-    if(DBG){ dbg.push('JMA index entries: '+idx.length); Object.keys(latest).forEach(id=>{ const ageH=((now-latest[id])/3600000).toFixed(1); dbg.push('  '+id+'  '+new Date(latest[id]).toISOString().slice(0,16).replace('T',' ')+'Z  age '+ageH+'h'+(now-latest[id]<FRESH?'  [shown]':'  [>10d OLD → filtered]')); }); }
-    const ids=Object.keys(latest).filter(id=> now-latest[id] < FRESH);
-    if(!ids.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['RESULT: no fresh storm in the index your browser received.','If the only IDs below are weeks old, JMA served a STALE index.',''].concat(dbg)); return 0; }
+    const now=Date.now(), FRESH=240*3600*1000, latest={};  /* 10 days; a listed storm with a missing/unparseable time is still shown, not dropped */
+    idx.forEach(o=>{ if(!o||!o.eventId) return; const tms=Date.parse(o.reportDatetime||o.reportDateTime||o.datetime||o.dateTime||o.validDateTime||o.validTime||o.date||''); if(isFinite(tms)) latest[o.eventId]=Math.max(latest[o.eventId]||0,tms); });
+    const allIds=[...new Set(idx.map(o=>o&&o.eventId).filter(Boolean))];
+    if(DBG){ dbg.push('JMA index entries: '+idx.length+' · storms: '+allIds.length); allIds.forEach(id=>{ const has=latest[id]!=null, ageH=has?((now-latest[id])/3600000).toFixed(1)+'h':'(no time)'; const shown=(latest[id]==null||now-latest[id]<FRESH); dbg.push('  '+id+'  '+(has?new Date(latest[id]).toISOString().slice(0,16).replace('T',' ')+'Z':'(no timestamp)')+'  age '+ageH+(shown?'  [shown]':'  [>10d OLD → filtered]')); }); }
+    const ids=allIds.filter(id=> latest[id]==null || now-latest[id] < FRESH);
+    if(!ids.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['RESULT: no storm listed in the index your browser received.',''].concat(dbg)); return 0; }
     let n=0;
     await Promise.allSettled(ids.map(async id=>{
       let spec; try{ spec=await getJSON('https://www.jma.go.jp/bosai/typhoon/data/'+id+'/specifications.json?_='+Date.now()); }catch(e){ if(DBG)dbg.push(id+'  SPECS FETCH ERR: '+e.message); return; }
@@ -501,7 +516,7 @@ function flyTo(key){
 
 async function fetchWaves(){
   btn.classList.add('busy'); stamp.textContent=t('stampLoading');
-  const regions=['hi','sc','gu','jp','wc','ak','dart']; let ok=0,fail=0;
+  const regions=['hi','sc','gu','jp','wc','ak','gm','dart']; let ok=0,fail=0;
   try{
     await Promise.all(regions.map(async rg=>{
       const list=BUOYS.filter(b=>b.rg===rg); if(!list.length)return;

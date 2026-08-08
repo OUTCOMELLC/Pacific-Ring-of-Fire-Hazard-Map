@@ -127,7 +127,7 @@
     <span class="langlinks"><a href="ring-of-fire-map.html">EN</a><a href="ring-of-fire-map.ja.html" class="on" lang="ja">日本語</a><a href="ring-of-fire-map.es.html" lang="es">Español</a></span>
   </nav>
   <span id="status" data-i18n="stInit">initializing…</span>
-  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 25</span>
+  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 27</span>
   <button class="rf" id="refreshBtn" data-i18n="refresh">Refresh</button>
 </header>
 <div id="wrap">
@@ -308,6 +308,19 @@ const BUOYS=[
   ['~TKY','Tokyo Bay ≈',35.30,139.80,1],['~KSM','Kashima ≈',35.90,140.80,1],
   ['~OMZ','Omaezaki ≈',34.50,138.22,1],['~SNR','Sanriku GPS ≈',38.20,141.70,1],
   ['~NAH','Naha, Okinawa ≈',26.20,127.65,1],['~ISG','Ishigaki ≈',24.35,124.18,1],
+  // Gulf of America + SE US Atlantic coast (NDBC real)
+  ['42001','Mid Gulf',25.90,-89.66],['42002','W Gulf',26.09,-93.76],
+  ['42003','E Gulf',25.93,-85.62],['42039','Pensacola, FL',28.79,-86.01],
+  ['42040','Mobile S, AL',29.21,-88.21],['42012','Orange Beach, AL',30.06,-87.55],
+  ['42036','W Tampa, FL',28.50,-84.52],['42035','Galveston, TX',29.23,-94.41],
+  ['42019','Freeport, TX',27.91,-95.35],['42020','Corpus Christi, TX',26.97,-96.69],
+  ['42055','Bay of Campeche',22.12,-94.05],
+  ['41009','Cape Canaveral, FL',28.52,-80.18],['41010','Canaveral East',28.88,-78.49],
+  ['41114','Fort Pierce, FL',27.55,-80.22],['41117','St Augustine, FL',29.99,-81.08],
+  ['41112','Fernandina Beach, FL',30.71,-81.29],['41008','Grays Reef, GA',31.40,-80.87],
+  ['41004','Edisto, SC',32.50,-79.10],['41013','Frying Pan Shoals, NC',33.44,-77.74],
+  ['41025','Diamond Shoals, NC',35.01,-75.40],['41002','S Hatteras',31.76,-74.84],
+  ['41001','E Hatteras',34.72,-72.32],
 ];
 
 // ---------- CITIES ----------
@@ -648,11 +661,12 @@ if(typeof L==='undefined'){
     const S_nod =LANG==='ja'?'台風あり・データ取得不可':LANG==='es'?'activo — sin datos':'active — data unavailable';
     let idx; try{ idx=await getJSON('https://www.jma.go.jp/bosai/information/data/typhoon.json?_='+Date.now()); }catch(e){ tcStat(S_off,'#F59E0B'); if(DBG)showTcDbg(['INDEX FETCH FAILED: '+e.message,'→ CORS/offline; open the live https page in a real browser']); return -1; }
     if(!Array.isArray(idx)||!idx.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['index loaded but EMPTY — no bulletins from JMA']); return 0; }
-    const now=Date.now(), FRESH=240*3600*1000, latest={};  /* 10 days: JMA lists only relevant storms; 36h was too strict */
-    idx.forEach(o=>{ if(!o||!o.eventId) return; const tms=Date.parse(o.reportDatetime||o.datetime||''); if(isFinite(tms)) latest[o.eventId]=Math.max(latest[o.eventId]||0,tms); });
-    if(DBG){ dbg.push('JMA index entries: '+idx.length); Object.keys(latest).forEach(id=>{ const ageH=((now-latest[id])/3600000).toFixed(1); dbg.push('  '+id+'  '+new Date(latest[id]).toISOString().slice(0,16).replace('T',' ')+'Z  age '+ageH+'h'+(now-latest[id]<FRESH?'  [shown]':'  [>10d OLD → filtered]')); }); }
-    const ids=Object.keys(latest).filter(id=> now-latest[id] < FRESH);
-    if(!ids.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['RESULT: no fresh storm in the index your browser received.','If the only IDs below are weeks old, JMA served a STALE index.',''].concat(dbg)); return 0; }
+    const now=Date.now(), FRESH=240*3600*1000, latest={};  /* 10 days; a listed storm with a missing/unparseable time is still shown, not dropped */
+    idx.forEach(o=>{ if(!o||!o.eventId) return; const tms=Date.parse(o.reportDatetime||o.reportDateTime||o.datetime||o.dateTime||o.validDateTime||o.validTime||o.date||''); if(isFinite(tms)) latest[o.eventId]=Math.max(latest[o.eventId]||0,tms); });
+    const allIds=[...new Set(idx.map(o=>o&&o.eventId).filter(Boolean))];
+    if(DBG){ dbg.push('JMA index entries: '+idx.length+' · storms: '+allIds.length); allIds.forEach(id=>{ const has=latest[id]!=null, ageH=has?((now-latest[id])/3600000).toFixed(1)+'h':'(no time)'; const shown=(latest[id]==null||now-latest[id]<FRESH); dbg.push('  '+id+'  '+(has?new Date(latest[id]).toISOString().slice(0,16).replace('T',' ')+'Z':'(no timestamp)')+'  age '+ageH+(shown?'  [shown]':'  [>10d OLD → filtered]')); }); }
+    const ids=allIds.filter(id=> latest[id]==null || now-latest[id] < FRESH);
+    if(!ids.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['RESULT: no storm listed in the index your browser received.',''].concat(dbg)); return 0; }
     let n=0;
     await Promise.allSettled(ids.map(async id=>{
       let spec; try{ spec=await getJSON('https://www.jma.go.jp/bosai/typhoon/data/'+id+'/specifications.json?_='+Date.now()); }catch(e){ if(DBG)dbg.push(id+'  SPECS FETCH ERR: '+e.message); return; }

@@ -381,6 +381,10 @@ const T={
   kSigWave:{en:'Sig. wave H',ja:'有義波高'},
   kPeriod:{en:'Period',ja:'周期'},
   kSwell:{en:'Swell H',ja:'うねり高'},
+  kSurf:{en:'Surf',ja:'サーフ'},
+  sfFlat:{en:'flat',ja:'ほぼ無し'},sfSmall:{en:'small',ja:'小'},sfFun:{en:'fun',ja:'ちょうど良い'},sfSolid:{en:'solid',ja:'大きめ'},sfBig:{en:'big',ja:'特大'},
+  sfOn:{en:'onshore',ja:'オンショア'},sfOff:{en:'offshore',ja:'オフショア'},sfCross:{en:'cross-shore',ja:'サイドショア'},
+  sfClean:{en:'clean',ja:'クリーン'},sfChop:{en:'choppy',ja:'荒れ'},sfFair:{en:'fair',ja:'まずまず'},
   airHead:{en:'Air column · vertical profile',ja:'大気の鉛直プロファイル'},
   airTag:{en:'PILOT VIEW',ja:'パイロット視点'},
   kStability:{en:'Stability',ja:'安定度'},
@@ -461,7 +465,7 @@ const ES={
   verifyLead:'⚠ Esta insignia es un aviso preliminar — verifica los avisos oficiales:',
   linkNWS:'NWS pronóstico y alertas ↗',
   amLead:'📡 Medición actual (AMeDAS · {st}, {km} km):',amWind:'viento {v} m/s{d}',amRain:'lluvia {v} mm/h',amRH:'{v}% HR',
-  marineHead:'Marino (modelo equiv. boya)',marineTag:'OLA · MAREJADA',kSigWave:'Altura sign. ola',kPeriod:'Período',kSwell:'Altura marejada',
+  marineHead:'Marino (modelo equiv. boya)',marineTag:'OLA · MAREJADA',kSigWave:'Altura sign. ola',kPeriod:'Período',kSwell:'Altura marejada',kSurf:'Surf',sfFlat:'plano',sfSmall:'pequeño',sfFun:'divertido',sfSolid:'sólido',sfBig:'grande',sfOn:'onshore',sfOff:'offshore',sfCross:'cross-shore',sfClean:'limpio',sfChop:'picado',sfFair:'regular',
   airHead:'Columna de aire · perfil vertical',airTag:'VISTA PILOTO',kStability:'Estabilidad',kGroundT:'Temp. suelo',
   capeExtreme:'Extrema',capeStrong:'Fuerte',capeModerate:'Moderada',capeMinimal:'Mínima',
   stUnstable:'Inestable',stMarginal:'Marginal',stCapped:'Con tapa / estable',stStable:'Estable',
@@ -536,19 +540,19 @@ async function fetchWeather(L){
    +`&current=temperature_2m,apparent_temperature,weather_code,pressure_msl,wind_speed_10m,wind_gusts_10m,wind_direction_10m,relative_humidity_2m,precipitation`
    +`&hourly=pressure_msl,wind_gusts_10m,wind_speed_10m,precipitation_probability,weather_code,precipitation,dew_point_2m,cloud_cover_low,visibility`
    +`&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_gusts_10m_max,weather_code`
-   +`&timezone=auto&forecast_days=2&wind_speed_unit=kmh`;
+   +`&timezone=auto&forecast_days=2&wind_speed_unit=ms`;
   return getJSON(u);
 }
 // Air-column / vertical profile — isolated best-effort feed so a bad variable can never break core weather
 async function fetchColumn(L){
   const u=`https://api.open-meteo.com/v1/forecast?latitude=${L.lat}&longitude=${L.lon}`
    +`&hourly=cape,boundary_layer_height,freezing_level_height,soil_temperature_0cm,temperature_1000hPa,temperature_925hPa,temperature_850hPa,wind_speed_850hPa,wind_direction_850hPa,relative_humidity_850hPa`
-   +`&timezone=auto&forecast_days=2&wind_speed_unit=kmh`;
+   +`&timezone=auto&forecast_days=2&wind_speed_unit=ms`;
   return getJSON(u);
 }
 async function fetchMarine(L){
   const u=`https://marine-api.open-meteo.com/v1/marine?latitude=${L.mLat}&longitude=${L.mLon}`
-   +`&current=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,sea_surface_temperature`
+   +`&current=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,sea_surface_temperature`
    +`&hourly=wave_height&timezone=auto&forecast_days=2`;
   return getJSON(u);
 }
@@ -683,9 +687,9 @@ function computeRisk(W, M, C){
   else if(minP<1011) add('Soft low',1,`min ${num(minP,0)} hPa`);
   if(drop>8) add('Rapid pressure fall',2,`−${num(drop,0)} hPa/24h`,true);
   else if(drop>4) add('Falling pressure',1,`−${num(drop,0)} hPa/24h`);
-  if(maxGust>75) add('Storm-force gusts',3,`${num(maxGust,0)} km/h`,true);
-  else if(maxGust>55) add('Gale gusts',2,`${num(maxGust,0)} km/h`);
-  else if(maxGust>40) add('Strong wind',1,`${num(maxGust,0)} km/h`);
+  if(maxGust>21) add('Storm-force gusts',3,`${num(maxGust,0)} m/s`,true);
+  else if(maxGust>15) add('Gale gusts',2,`${num(maxGust,0)} m/s`);
+  else if(maxGust>11) add('Strong wind',1,`${num(maxGust,0)} m/s`);
   if(maxPP>80) add('High rain chance',2,`${num(maxPP,0)}%`);
   else if(maxPP>50) add('Rain likely',1,`${num(maxPP,0)}%`);
   if(rain>25) add('Heavy rainfall',1,`${num(rain,0)} mm`);
@@ -719,7 +723,7 @@ function computeRisk(W, M, C){
     else if(capeMax>1000) add('High instability',2,`CAPE ${num(capeMax,0)}`);
     else if(capeMax>500) add('Moderate instability',1,`CAPE ${num(capeMax,0)}`);
   }
-  if(shear!=null&&shear>45) add('Low-level wind shear',1,`Δ${num(shear,0)} km/h`);
+  if(shear!=null&&shear>12.5) add('Low-level wind shear',1,`Δ${num(shear,1)} m/s`);
 
   const level = s>=6?'WARNING' : s>=3?'WATCH':'CALM';
   return {score:s, level, factors:f, minP, drop, maxGust, maxPP, waveMax,
@@ -744,6 +748,23 @@ function evMatch(EV,name){
   return EV.find(e=>{const en=norm(e.volcano_name||e.name||e.title||'');return en&&nk&&(en.includes(nk)||nk.includes(en.split(' ')[0]));})||null;
 }
 
+const FACES={hk:340,it:330,ng:250,mz:115,ty:190,iz:120,tb:180,hi:190,la:230,sc:250,sf:265};  // bearing each coast opens toward (approx)
+function surfHTML(L,M,cur){
+  if(!M||!M.current) return '';
+  const c=M.current, sw=c.swell_wave_height, sp=c.swell_wave_period, sd=c.swell_wave_direction, h=(sw!=null?sw:c.wave_height);
+  if(h==null) return '';
+  const sizeLbl = h<0.5?t('sfFlat'):h<1?t('sfSmall'):h<1.5?t('sfFun'):h<2.5?t('sfSolid'):t('sfBig');
+  const faces=FACES[L.id], wd=cur?cur.wind_direction_10m:null, ws=cur?cur.wind_speed_10m:null;
+  let windPhrase='';
+  if(faces!=null&&wd!=null&&ws!=null){
+    const dd=Math.min(Math.abs(wd-faces),360-Math.abs(wd-faces));
+    const dr=dd<45?'On':dd>135?'Off':'Cross';
+    const q=(ws<3||(dr==='Off'&&ws<8))?'Clean':(((dr==='On')&&ws>=6)||ws>10)?'Chop':'Fair';
+    windPhrase=' · '+t('sf'+dr)+' '+num(ws,0)+' m/s ('+t('sf'+q)+')';
+  }
+  const swInfo=' · '+num(h,1)+' m'+(sp!=null?(' @ '+num(sp,0)+' s'):'')+(sd!=null?(' '+dir(sd)):'');
+  return `<div class="ro"><div class="k">🏄 ${t('kSurf')}</div><div class="v">${sizeLbl}<small>${swInfo}${windPhrase}</small></div></div>`;
+}
 function renderCard(L, data){
   const card=document.getElementById('card-'+L.id);
   if(data.error){
@@ -769,7 +790,7 @@ function renderCard(L, data){
     if(vis!=null){
       if(vis<1000) fog={lab:t('fogDense'),cls:'crit',det:t('fogVisM',{v:num(vis,0)})};
       else if(vis<4000) fog={lab:t('fogMist'),cls:'warn',det:t('fogVisKm',{v:(vis/1000).toFixed(1)})};
-      else if(spread!=null&&spread<=2.5&&(clow==null||clow>50)&&(wind==null||wind<22)) fog={lab:t('fogForming'),cls:'warn',det:t('fogTdewCloud',{v:num(spread,1),c:num(clow,0)})};
+      else if(spread!=null&&spread<=2.5&&(clow==null||clow>50)&&(wind==null||wind<6)) fog={lab:t('fogForming'),cls:'warn',det:t('fogTdewCloud',{v:num(spread,1),c:num(clow,0)})};
       else fog={lab:t('fogClear'),cls:'ok',det:t('fogVisKmP',{v:(vis/1000).toFixed(0)})};
     } else if(spread!=null){
       fog = spread<=2 ? {lab:t('fogLikely'),cls:'warn',det:t('fogTdew',{v:num(spread,1)})} : {lab:t('fogClear'),cls:'ok',det:t('fogTdew',{v:num(spread,1)})};
@@ -887,7 +908,7 @@ function renderCard(L, data){
       </div>
       <div class="readouts">
         <div class="ro"><div class="k">${t('kPressure')}</div><div class="v">${num(cur.pressure_msl,0)}<small> hPa</small> ${trendArrow(R.drop)}</div></div>
-        <div class="ro"><div class="k">${t('kWind')}</div><div class="v">${num(cur.wind_speed_10m,0)}<small>/${num(cur.wind_gusts_10m,0)} ${dir(cur.wind_direction_10m)}</small></div></div>
+        <div class="ro"><div class="k">${t('kWind')}</div><div class="v">${num(cur.wind_speed_10m,1)}<small>/${num(cur.wind_gusts_10m,1)} m/s ${dir(cur.wind_direction_10m)}</small></div></div>
         <div class="ro"><div class="k">${t('kRain')}</div><div class="v">${num(R.maxPP,0)}<small>%</small></div></div>
       </div>
       <div class="chips">${chips}</div>
@@ -902,6 +923,7 @@ function renderCard(L, data){
         <div class="ro"><div class="k">${t('kSigWave')}</div><div class="v">${num(M?.current?.wave_height)}<small> m</small></div></div>
         <div class="ro"><div class="k">${t('kPeriod')}</div><div class="v">${num(M?.current?.wave_period,0)}<small> s</small></div></div>
         <div class="ro"><div class="k">${t('kSwell')}</div><div class="v">${num(M?.current?.swell_wave_height)}<small> m</small></div></div>
+        ${surfHTML(L,M,cur)}
       </div>
     </div>`}
 
@@ -914,7 +936,7 @@ function renderCard(L, data){
       </div>
       <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:11px;line-height:1.7">
         ${t('mixedLayer',{v:R.blh!=null?num(R.blh,0)+' m':'—'})} · ${t('freezingLvl',{v:R.frz!=null?num(R.frz,0)+' m':'—'})}<br>
-        ${t('shear',{v:R.shear!=null?num(R.shear,0)+' km/h':'—'})} · ${t('windsAloft',{v:R.ws850!=null?num(R.ws850,0)+' km/h '+dir(R.wd850):'—'})}
+        ${t('shear',{v:R.shear!=null?num(R.shear,1)+' m/s':'—'})} · ${t('windsAloft',{v:R.ws850!=null?num(R.ws850,1)+' m/s '+dir(R.wd850):'—'})}
       </div>
       ${R.marineLayer?`<div class="flood warn" style="margin-top:11px">${t('marineLayerMsg',{v:num(R.blh,0)})}</div>`:''}
       ${fog?`<div class="flood ${fog.cls}" style="margin-top:11px">${t('fogMsg',{lab:fog.lab,det:fog.det})}${fogLink}</div>`:''}
