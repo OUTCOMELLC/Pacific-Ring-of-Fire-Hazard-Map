@@ -127,7 +127,7 @@
     <span class="langlinks"><a href="ring-of-fire-map.html" class="on">EN</a><a href="ring-of-fire-map.ja.html" lang="ja">日本語</a><a href="ring-of-fire-map.es.html" lang="es">Español</a></span>
   </nav>
   <span id="status" data-i18n="stInit">initializing…</span>
-  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 31</span>
+  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 32</span>
   <button class="rf" id="refreshBtn" data-i18n="refresh">Refresh</button>
 </header>
 <div id="wrap">
@@ -189,6 +189,7 @@ const T={
   lyNasaImg:{en:'🛰 Satellite imagery (NASA, daily)',ja:'🛰 衛星画像（NASA・日次）'},
   lyNasaFire:{en:'🔥 Active fires / thermal (NASA)',ja:'🔥 火災・熱異常（NASA）'},
   lyTide:{en:'▲ Tide gauges (NOAA · US West Coast)',ja:'▲ 検潮所（NOAA・米国西海岸）'},
+  lyIOC:{en:'◆ Global tide/tsunami gauges (IOC)',ja:'◆ 世界の検潮所・津波計（IOC）'},
   legNHC:{en:'🌀 hurricane track + cone (NHC/CPHC → Mexico, US, Hawaii)',ja:'🌀 ハリケーンの経路＋予報円（NHC/CPHC → メキシコ・米国・ハワイ）'},
 };
 function t(k,v){ let s=(T[k]&&(T[k][LANG]||T[k].en))||k; if(v) for(const x in v) s=s.replace('{'+x+'}',v[x]); return s; }
@@ -220,6 +221,7 @@ const ES={
   lyNasaImg:'🛰 Imagen satelital (NASA, diaria)',
   lyNasaFire:'🔥 Incendios activos / térmico (NASA)',
   lyTide:'▲ Mareógrafos (NOAA · costa oeste EE. UU.)',
+  lyIOC:'◆ Mareógrafos globales (IOC)',
   legNHC:'🌀 trayectoria + cono de huracán (NHC/CPHC → México, EE. UU., Hawái)',
 };
 Object.keys(ES).forEach(k=>{ if(T[k]) T[k].es=ES[k]; else T[k]={en:ES[k],ja:ES[k],es:ES[k]}; });
@@ -387,7 +389,7 @@ if(typeof L==='undefined'){
     html:`<div style="transform:rotate(${(h||0)-45}deg);font-size:13px;color:${C.teal};text-shadow:0 0 2px #000">✈</div>`});
 
   const volcLayer=L.layerGroup(), quakeLayer=L.layerGroup(), rofLayer=L.layerGroup(),
-        buoyLayer=L.layerGroup(), cityLayer=L.layerGroup(), planeLayer=L.layerGroup(), platformLayer=L.layerGroup(), gridLayer=L.layerGroup(), idlLayer=L.layerGroup(), jpqLayer=L.layerGroup(), typhoonLayer=L.layerGroup(), nhcLayer=L.layerGroup(), tideLayer=L.layerGroup();
+        buoyLayer=L.layerGroup(), cityLayer=L.layerGroup(), planeLayer=L.layerGroup(), platformLayer=L.layerGroup(), gridLayer=L.layerGroup(), idlLayer=L.layerGroup(), jpqLayer=L.layerGroup(), typhoonLayer=L.layerGroup(), nhcLayer=L.layerGroup(), tideLayer=L.layerGroup(), iocLayer=L.layerGroup();
 
   // Ring of Fire schematic
   L.polyline(ROF.map(p=>[p[0],PL(p[1])]),{color:C.orange,weight:1.5,dashArray:'7 7',opacity:.55}).addTo(rofLayer);
@@ -752,6 +754,28 @@ if(typeof L==='undefined'){
     el.style.color=ensoColor(ph);
   }
 
+/* ===== IOC Sea Level Monitoring — global Pacific-rim tide/tsunami gauges (link-out; codes verified) ===== */
+const IOC_STATIONS=[
+  ['abas','Abashiri 網走',44.02,144.28,'Japan'],['abur','Aburatsu 油津',31.58,131.41,'Japan'],
+  ['anto','Antofagasta',-23.65,-70.40,'Chile'],['aric','Arica',-18.47,-70.32,'Chile'],
+  ['atic','Atico',-16.23,-73.69,'Peru'],['acap','Acapulco',16.84,-99.90,'Mexico'],
+  ['auct','Auckland',-36.83,174.78,'New Zealand'],['adak','Adak',51.86,-176.63,'USA · Alaska'],
+  ['anch','Anchorage',61.24,-149.89,'USA · Alaska'],['ambon','Ambon',-3.69,128.18,'Indonesia'],
+  ['balt','Baltra · Galápagos',-0.43,-90.29,'Ecuador'],['auasi','Auasi',-14.26,-170.57,'Samoa'],
+  ['alofi','Alofi',-19.05,-169.92,'Niue']
+];
+function loadIOC(){
+  if(typeof iocLayer==='undefined') return; iocLayer.clearLayers();
+  const IC='#22D3EE';
+  IOC_STATIONS.forEach(([code,nm,la,lo,ctry])=>{
+    const url='https://www.ioc-sealevelmonitoring.org/station.php?code='+code;
+    L.marker([la,PL(lo)],{icon:L.divIcon({className:'',iconSize:[14,14],iconAnchor:[7,7],
+      html:'<div style="color:'+IC+';font-size:13px;line-height:1;text-shadow:0 0 3px #000">◆</div>'})})
+      .addTo(iocLayer)
+      .bindPopup('<b>🌊 '+nm+'</b><br><span style="color:#64748B">'+ctry+' · IOC gauge '+code+'</span><br><a href="'+url+'" target="_blank" rel="noopener" style="color:#3B82F6">live sea level (IOC) →</a><br><span style="color:#6B7280">UNESCO/IOC Sea Level Monitoring</span>');
+  });
+}
+
 /* ===== NOAA CO-OPS tide gauges — US West Coast (public API, no key, CORS-open) ===== */
 const TIDE_STATIONS=[
   ['9449880','Friday Harbor, WA',48.546,-123.013],['9447130','Seattle, WA',47.603,-122.339],
@@ -862,7 +886,8 @@ async function loadTides(){
     [t('lyNHC')]:nhcLayer,
     [t('lyNasaImg')]:nasaImgLayer,
     [t('lyNasaFire')]:nasaFireLayer,
-    [t('lyTide')]:tideLayer
+    [t('lyTide')]:tideLayer,
+    [t('lyIOC')]:iocLayer
   },{collapsed:false}).addTo(map);
   // Collapsible header so the layers panel can be closed/opened (matches Framing/Legend)
   (function(){
@@ -878,7 +903,7 @@ async function loadTides(){
   })();
 
   // default-on layers
-  [gridLayer,idlLayer,volcLayer,quakeLayer,jpqLayer,rofLayer,buoyLayer,platformLayer,cityLayer,typhoonLayer,nhcLayer,tideLayer].forEach(l=>l.addTo(map));
+  [gridLayer,idlLayer,volcLayer,quakeLayer,jpqLayer,rofLayer,buoyLayer,platformLayer,cityLayer,typhoonLayer,nhcLayer,tideLayer,iocLayer].forEach(l=>l.addTo(map));
 
   map.on('overlayadd',e=>{ if(e.layer===planeLayer) loadPlanes(); });
 
@@ -892,6 +917,7 @@ async function loadTides(){
     let tn=0; try{ tn=await loadTyphoons(); }catch(e){ tn=-1; }
     let hn=0; try{ hn=await loadNHC(); }catch(e){ hn=0; }
     loadTides();
+    loadIOC();
     loadENSO();
     loadTsunami();
     if(map.hasLayer(planeLayer)) loadPlanes();
