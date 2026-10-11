@@ -383,6 +383,7 @@ const T={
   kSwell:{en:'Swell H',ja:'うねり高'},
   kSurf:{en:'Surf',ja:'サーフ'},
   sfFlat:{en:'flat',ja:'ほぼ無し'},sfSmall:{en:'small',ja:'小'},sfFun:{en:'fun',ja:'ちょうど良い'},sfSolid:{en:'solid',ja:'大きめ'},sfBig:{en:'big',ja:'特大'},
+  sfAnkle:{en:'ankle–knee',ja:'足首〜膝'},sfWaist:{en:'waist',ja:'腰'},sfChest:{en:'chest',ja:'胸'},sfHead:{en:'head-high',ja:'頭'},sfOver:{en:'overhead',ja:'頭オーバー'},sfFcst:{en:'forecast',ja:'予報'},
   sfOn:{en:'onshore',ja:'オンショア'},sfOff:{en:'offshore',ja:'オフショア'},sfCross:{en:'cross-shore',ja:'サイドショア'},
   sfClean:{en:'clean',ja:'クリーン'},sfChop:{en:'choppy',ja:'荒れ'},sfFair:{en:'fair',ja:'まずまず'},
   airHead:{en:'Air column · vertical profile',ja:'大気の鉛直プロファイル'},
@@ -465,7 +466,7 @@ const ES={
   verifyLead:'⚠ Esta insignia es un aviso preliminar — verifica los avisos oficiales:',
   linkNWS:'NWS pronóstico y alertas ↗',
   amLead:'📡 Medición actual (AMeDAS · {st}, {km} km):',amWind:'viento {v} m/s{d}',amRain:'lluvia {v} mm/h',amRH:'{v}% HR',
-  marineHead:'Marino (modelo equiv. boya)',marineTag:'OLA · MAREJADA',kSigWave:'Altura sign. ola',kPeriod:'Período',kSwell:'Altura marejada',kSurf:'Surf',sfFlat:'plano',sfSmall:'pequeño',sfFun:'divertido',sfSolid:'sólido',sfBig:'grande',sfOn:'onshore',sfOff:'offshore',sfCross:'cross-shore',sfClean:'limpio',sfChop:'picado',sfFair:'regular',
+  marineHead:'Marino (modelo equiv. boya)',marineTag:'OLA · MAREJADA',kSigWave:'Altura sign. ola',kPeriod:'Período',kSwell:'Altura marejada',kSurf:'Surf',sfFlat:'plano',sfSmall:'pequeño',sfFun:'divertido',sfSolid:'sólido',sfBig:'grande',sfAnkle:'tobillo–rodilla',sfWaist:'cintura',sfChest:'pecho',sfHead:'cabeza',sfOver:'sobre la cabeza',sfFcst:'pronóstico',sfOn:'onshore',sfOff:'offshore',sfCross:'cross-shore',sfClean:'limpio',sfChop:'picado',sfFair:'regular',
   airHead:'Columna de aire · perfil vertical',airTag:'VISTA PILOTO',kStability:'Estabilidad',kGroundT:'Temp. suelo',
   capeExtreme:'Extrema',capeStrong:'Fuerte',capeModerate:'Moderada',capeMinimal:'Mínima',
   stUnstable:'Inestable',stMarginal:'Marginal',stCapped:'Con tapa / estable',stStable:'Estable',
@@ -753,7 +754,8 @@ function surfHTML(L,M,cur){
   if(!M||!M.current) return '';
   const c=M.current, sw=c.swell_wave_height, sp=c.swell_wave_period, sd=c.swell_wave_direction, h=(sw!=null?sw:c.wave_height);
   if(h==null) return '';
-  const sizeLbl = h<0.5?t('sfFlat'):h<1?t('sfSmall'):h<1.5?t('sfFun'):h<2.5?t('sfSolid'):t('sfBig');
+  const eff = h * (sp!=null ? Math.min(1.6, Math.max(0.7, sp/9)) : 1);  // period-weighted: long-period groundswell breaks bigger than its height
+  const sizeLbl = eff<0.3?t('sfFlat'):eff<0.6?t('sfAnkle'):eff<0.9?t('sfWaist'):eff<1.3?t('sfChest'):eff<1.8?t('sfHead'):eff<2.8?t('sfOver'):t('sfBig');
   const faces=FACES[L.id], wd=cur?cur.wind_direction_10m:null, ws=cur?cur.wind_speed_10m:null;
   let windPhrase='';
   if(faces!=null&&wd!=null&&ws!=null){
@@ -763,7 +765,9 @@ function surfHTML(L,M,cur){
     windPhrase=' · '+t('sf'+dr)+' '+num(ws,0)+' m/s ('+t('sf'+q)+')';
   }
   const swInfo=' · '+num(h,1)+' m'+(sp!=null?(' @ '+num(sp,0)+' s'):'')+(sd!=null?(' '+dir(sd)):'');
-  return `<div class="ro"><div class="k">🏄 ${t('kSurf')}</div><div class="v">${sizeLbl}<small>${swInfo}${windPhrase}</small></div></div>`;
+  const fc='https://www.windy.com/?waves,'+L.lat.toFixed(2)+','+L.lon.toFixed(2)+',8';
+  const link=' · <a href="'+fc+'" target="_blank" rel="noopener" style="color:#3B82F6;text-decoration:none">🏄 '+t('sfFcst')+' →</a>';
+  return `<div class="ro"><div class="k">🏄 ${t('kSurf')}</div><div class="v">${sizeLbl}<small>${swInfo}${windPhrase}${link}</small></div></div>`;
 }
 function renderCard(L, data){
   const card=document.getElementById('card-'+L.id);
