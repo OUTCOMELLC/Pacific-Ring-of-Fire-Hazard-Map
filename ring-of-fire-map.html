@@ -127,7 +127,7 @@
     <span class="langlinks"><a href="ring-of-fire-map.html" class="on">EN</a><a href="ring-of-fire-map.ja.html" lang="ja">日本語</a><a href="ring-of-fire-map.es.html" lang="es">Español</a></span>
   </nav>
   <span id="status" data-i18n="stInit">initializing…</span>
-  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 27</span>
+  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 29</span>
   <button class="rf" id="refreshBtn" data-i18n="refresh">Refresh</button>
 </header>
 <div id="wrap">
@@ -362,10 +362,11 @@ if(typeof L==='undefined'){
   setStatus(t('stOffline'));
 } else {
   const map=L.map('map',{minZoom:2,maxZoom:12,attributionControl:true,worldCopyJump:false}).setView([21.46,-157.97],3);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
-    subdomains:'abcd',maxZoom:19,
-    attribution:'&copy; OpenStreetMap &copy; CARTO · quakes USGS · Japan JMA防災/P2P地震情報 · volcanoes GVP/USGS · aircraft airplanes.live · buoys NDBC/NOWPHAS'
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{
+    maxZoom:16,
+    attribution:'Tiles &copy; Esri · quakes USGS · Japan JMA防災/P2P地震情報 · volcanoes GVP/USGS · aircraft airplanes.live · buoys NDBC/NOWPHAS'
   }).addTo(map);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,opacity:0.9}).addTo(map);
   setTimeout(()=>map.invalidateSize(),250);   // iOS Safari: tiles stay blank until size is recomputed
   setTimeout(()=>map.invalidateSize(),900);
   window.addEventListener('load',()=>map.invalidateSize());
@@ -543,7 +544,7 @@ if(typeof L==='undefined'){
   }
 
   // ===== Typhoons / tropical cyclones — JMA RSMC Tokyo (Western North Pacific) =====
-  // Index: bosai/information/data/typhoon.json (active eventIds + report times)
+  // Index: bosai/typhoon/data/targetTc.json (LIVE active-TC list: tropicalCyclone code + category TD/TS/TY + issue time)
   // Track: bosai/typhoon/data/{eventId}/specifications.json (analysis 実況 + forecast +12/24/45/69h)
   // Robust: accepts position.deg as {lat,lon} OR [lat,lon]/[lon,lat] OR N/S/E/W strings; auto-detects
   // coord order by WNP range (lat<=65, lon>=95 don't overlap); range-checks to RSMC area; empties if unparseable.
@@ -659,12 +660,13 @@ if(typeof L==='undefined'){
     const S_none=LANG==='ja'?'活動中の台風なし':LANG==='es'?'sin tifones activos':'none active now';
     const S_off =LANG==='ja'?'配信オフライン（要https）':LANG==='es'?'sin conexión (req. https)':'feed offline (needs https)';
     const S_nod =LANG==='ja'?'台風あり・データ取得不可':LANG==='es'?'activo — sin datos':'active — data unavailable';
-    let idx; try{ idx=await getJSON('https://www.jma.go.jp/bosai/information/data/typhoon.json?_='+Date.now()); }catch(e){ tcStat(S_off,'#F59E0B'); if(DBG)showTcDbg(['INDEX FETCH FAILED: '+e.message,'→ CORS/offline; open the live https page in a real browser']); return -1; }
-    if(!Array.isArray(idx)||!idx.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['index loaded but EMPTY — no bulletins from JMA']); return 0; }
-    const now=Date.now(), FRESH=240*3600*1000, latest={};  /* 10 days; a listed storm with a missing/unparseable time is still shown, not dropped */
-    idx.forEach(o=>{ if(!o||!o.eventId) return; const tms=Date.parse(o.reportDatetime||o.reportDateTime||o.datetime||o.dateTime||o.validDateTime||o.validTime||o.date||''); if(isFinite(tms)) latest[o.eventId]=Math.max(latest[o.eventId]||0,tms); });
-    const allIds=[...new Set(idx.map(o=>o&&o.eventId).filter(Boolean))];
-    if(DBG){ dbg.push('JMA index entries: '+idx.length+' · storms: '+allIds.length); allIds.forEach(id=>{ const has=latest[id]!=null, ageH=has?((now-latest[id])/3600000).toFixed(1)+'h':'(no time)'; const shown=(latest[id]==null||now-latest[id]<FRESH); dbg.push('  '+id+'  '+(has?new Date(latest[id]).toISOString().slice(0,16).replace('T',' ')+'Z':'(no timestamp)')+'  age '+ageH+(shown?'  [shown]':'  [>10d OLD → filtered]')); }); }
+    let idx; try{ idx=await getJSON('https://www.jma.go.jp/bosai/typhoon/data/targetTc.json?_='+Date.now()); }catch(e){ tcStat(S_off,'#F59E0B'); if(DBG)showTcDbg(['INDEX FETCH FAILED (targetTc.json): '+e.message,'→ CORS/offline; open the live https page in a real browser']); return -1; }
+    if(!Array.isArray(idx)||!idx.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['targetTc.json loaded but EMPTY — JMA reports no active system']); return 0; }
+    /* LIVE endpoint targetTc.json: [{tropicalCyclone:"TC2611",typhoonNumber:"2609",category:"TY",issue:"...+09:00"}] — old information/data/typhoon.json was stale */
+    const now=Date.now(), FRESH=240*3600*1000, latest={}, cat={};
+    idx.forEach(o=>{ const id=o&&(o.tropicalCyclone||o.eventId); if(!id) return; if(o.category) cat[id]=o.category; const tms=Date.parse(o.issue||o.reportDatetime||o.datetime||''); if(isFinite(tms)) latest[id]=Math.max(latest[id]||0,tms); });
+    const allIds=[...new Set(idx.map(o=>o&&(o.tropicalCyclone||o.eventId)).filter(Boolean))];
+    if(DBG){ dbg.push('JMA index entries: '+idx.length+' · storms: '+allIds.length); allIds.forEach(id=>{ const has=latest[id]!=null, ageH=has?((now-latest[id])/3600000).toFixed(1)+'h':'(no time)'; const shown=(latest[id]==null||now-latest[id]<FRESH); dbg.push('  '+id+(cat[id]?' ['+cat[id]+']':'')+'  '+(has?new Date(latest[id]).toISOString().slice(0,16).replace('T',' ')+'Z':'(no timestamp)')+'  age '+ageH+(shown?'  [shown]':'  [>10d OLD → filtered]')); }); }
     const ids=allIds.filter(id=> latest[id]==null || now-latest[id] < FRESH);
     if(!ids.length){ tcStat(S_none,'#6B7280'); if(DBG)showTcDbg(['RESULT: no storm listed in the index your browser received.',''].concat(dbg)); return 0; }
     let n=0;
@@ -827,13 +829,15 @@ if(typeof L==='undefined'){
     let qn=0; try{ qn=await loadQuakes(); }catch(e){}
     let jn=0; try{ jn=await loadJapanQuakes(); }catch(e){}
     let tn=0; try{ tn=await loadTyphoons(); }catch(e){ tn=-1; }
-    try{ await loadNHC(); }catch(e){}
+    let hn=0; try{ hn=await loadNHC(); }catch(e){ hn=0; }
     loadENSO();
     loadTsunami();
     if(map.hasLayer(planeLayer)) loadPlanes();
-    const tyLbl = tn===-1?(LANG==='ja'?'配信不可':LANG==='es'?'sin conexión':'feed offline')
+    const tyTotal=(tn>0?tn:0)+(hn>0?hn:0);  // JMA typhoons + NHC/CPHC hurricanes/TS
+    const tyLbl = tyTotal>0 ? tyTotal
+               : tn===-1?(LANG==='ja'?'配信不可':LANG==='es'?'sin conexión':'feed offline')
                : tn===-2?(LANG==='ja'?'活動中・track無':LANG==='es'?'activo·sin datos':'active·no track data')
-               : tn;
+               : 0;
     setStatus(t('stCounts',{v:VOLC.length,q:qn,j:jn,ty:tyLbl,t:new Date().toLocaleTimeString([],{hour12:false})}));
   }
   document.getElementById('refreshBtn').addEventListener('click',refreshAll);
