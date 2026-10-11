@@ -106,6 +106,7 @@
     <span class="grp" style="color:var(--dim)" data-i18n="legSource">● NDBC real · ■ NOWPHAS/JMA approx · ◆ DART tsunami · click for live detail</span>
     <span class="grp" style="color:var(--dim)"><span style="color:#EC4899">🌀</span> <span data-i18n="legTyph">typhoon track + forecast (JMA RSMC)</span><span id="typhStat" style="color:#6B7280"></span> <a href="https://www.jma.go.jp/bosai/map.html#5/31.6/136.3/&elem=root&typhoon=all&contents=typhoon" target="_blank" rel="noopener" style="color:#3B82F6">JMA地図 →</a></span>
     <span class="grp" style="color:var(--dim)"><span style="color:#F59E0B">🌀</span> <span data-i18n="legNHC">hurricane track + cone (NHC/CPHC → Mexico, US, Hawaii)</span><span id="nhcStat" style="color:#6B7280"></span> <a href="https://www.nhc.noaa.gov/cyclones/?epac" target="_blank" rel="noopener" style="color:#3B82F6">NHC →</a></span>
+    <span class="grp" style="color:var(--dim)"><span style="color:#A78BFA">▲</span> <span data-i18n="legTide">NOAA tide gauge (US West Coast · click for level)</span></span>
     <span class="grp" style="color:var(--dim)"><span style="color:#22D3EE">🌊</span> ENSO: <span id="ensoStat" style="color:#9CA3AF">…</span> <a href="https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.shtml" target="_blank" rel="noopener" style="color:#3B82F6">NOAA →</a></span>
   </div>
   <div class="note" data-i18n="note">
@@ -128,6 +129,7 @@ const T={
   legSource:{en:'● NDBC real · ■ NOWPHAS/JMA approx · ◆ DART tsunami · click for live detail',ja:'● NDBC実測 ・ ■ NOWPHAS/JMA概略 ・ ◆ DART津波 ・ クリックで詳細'},
   legTyph:{en:'typhoon track + forecast (JMA RSMC)',ja:'台風の経路＋予報（JMA RSMC）'},
   legNHC:{en:'hurricane track + cone (NHC/CPHC → Mexico, US, Hawaii)',ja:'ハリケーンの経路＋予報円（NHC/CPHC → メキシコ・米国・ハワイ）'},
+  legTide:{en:'NOAA tide gauge (US West Coast · click for level)',ja:'NOAA検潮所（米国西海岸・クリックで潮位）'},
   note:{en:'Wave height is a model value (Open-Meteo Marine) sampled at each buoy\u2019s location, since NDBC\u2019s raw feeds block browser access. Japan/Okinawa stations (■) are approximate NOWPHAS/JMA positions. Live data needs an https connection; markers still plot offline. Map © OpenStreetMap, CARTO.',ja:'波高はモデル値（Open-Meteo Marine）を各ブイ位置でサンプリングしたものです（NDBCの生フィードはブラウザからのアクセスを遮断するため）。日本・沖縄の観測点（■）はNOWPHAS/JMAの概略位置です。ライブデータにはhttps接続が必要ですが、オフラインでもマーカーは表示されます。地図 © OpenStreetMap, CARTO。'},
   stampLoading:{en:'loading waves…',ja:'波浪取得中…'},
   stampLive:{en:'{ok} buoys live{fail} · {t}',ja:'ブイ {ok} 点ライブ{fail} ・ {t}'},
@@ -147,6 +149,7 @@ const ES={
   legSource:'● NDBC real · ■ NOWPHAS/JMA aprox · ◆ DART tsunami · clic para detalle en vivo',
   legTyph:'trayectoria de tifón + pronóstico (JMA RSMC)',
   legNHC:'trayectoria + cono de huracán (NHC/CPHC → México, EE. UU., Hawái)',
+  legTide:'mareógrafo NOAA (costa oeste EE. UU. · clic para nivel)',
   note:'La altura de ola es un valor de modelo (Open-Meteo Marine) muestreado en la ubicación de cada boya, ya que los datos crudos de NDBC bloquean el acceso del navegador. Las estaciones de Japón/Okinawa (■) son posiciones aproximadas NOWPHAS/JMA. Los datos en vivo requieren conexión https; las marcas se muestran igual sin conexión. Mapa © OpenStreetMap, CARTO.',
   stampLoading:'cargando olas…',stampLive:'{ok} boyas en vivo{fail} · {t}',stampFail:' · {n} sin datos',
   stampOffline:'sin datos de olas en vivo (¿sin conexión?) — se muestran posiciones',
@@ -270,7 +273,7 @@ function buoyInfoHTML(b){
     `<div class="bsrc">Open-Meteo Marine model · sampled at station coordinates · ${w?('updated '+new Date().toLocaleTimeString([],{hour12:false})):'awaiting data'}</div>`;
 }
 
-let map, layer, typhoonLayer, nhcLayer;
+let map, layer, typhoonLayer, nhcLayer, tideLayer;
 function initMap(){
   map=L.map('map',{minZoom:2,maxZoom:11,worldCopyJump:false}).setView([21.46,-157.97],3);
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{
@@ -281,6 +284,8 @@ function initMap(){
   layer=L.layerGroup().addTo(map);
   typhoonLayer=L.layerGroup().addTo(map);
   nhcLayer=L.layerGroup().addTo(map);
+  tideLayer=L.layerGroup().addTo(map);
+  loadTides();
   setTimeout(()=>map.invalidateSize(),250);   // iOS Safari: recompute size or tiles stay blank
   window.addEventListener('resize',()=>map.invalidateSize());
   window.addEventListener('orientationchange',()=>setTimeout(()=>map.invalidateSize(),300));
@@ -516,6 +521,51 @@ function flyTo(key){
   }
 
 
+/* ===== NOAA CO-OPS tide gauges — US West Coast (public API, no key, CORS-open) ===== */
+const TIDE_STATIONS=[
+  ['9449880','Friday Harbor, WA',48.546,-123.013],['9447130','Seattle, WA',47.603,-122.339],
+  ['9444900','Port Townsend, WA',48.113,-122.759],['9440910','Toke Point, WA',46.707,-123.967],
+  ['9439040','Astoria, OR',46.207,-123.768],['9435380','South Beach, OR',44.625,-124.044],
+  ['9432780','Charleston, OR',43.345,-124.322],['9419750','Crescent City, CA',41.745,-124.184],
+  ['9418767','Humboldt Bay, CA',40.767,-124.217],['9415020','Point Reyes, CA',37.996,-122.976],
+  ['9414290','San Francisco, CA',37.807,-122.466],['9413450','Monterey, CA',36.605,-121.888],
+  ['9412110','Port San Luis, CA',35.169,-120.754],['9411340','Santa Barbara, CA',34.408,-119.685],
+  ['9410840','Santa Monica, CA',34.008,-118.500],['9410660','Los Angeles, CA',33.720,-118.272],
+  ['9410230','La Jolla, CA',32.867,-117.257],['9410170','San Diego, CA',32.714,-117.173]
+];
+function tideArrow(rising){ return rising==null?'↕':rising?'▲':'▼'; }
+async function loadTides(){
+  if(typeof tideLayer==='undefined') return; tideLayer.clearLayers();
+  const DBG=/tidedebug/i.test(location.hash||'');
+  const fmt=d=>d.getUTCFullYear()+(''+(d.getUTCMonth()+1)).padStart(2,'0')+(''+d.getUTCDate()).padStart(2,'0');
+  const now=new Date(), end=new Date(now.getTime()+24*3600*1000);
+  const TC='#A78BFA';  // violet — distinct from wave/typhoon/NHC colors
+  TIDE_STATIONS.forEach(([id,nm,la,lo])=>{
+    const base='https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?application=buoy-map&station='+id+'&time_zone=lst_ldt&units=english&format=json';
+    // marker drawn immediately; popup enriched after fetch
+    const m=L.marker([la,PL(lo)],{icon:L.divIcon({className:'',iconSize:[16,16],iconAnchor:[8,8],
+      html:'<div style="color:'+TC+';font-size:15px;line-height:1;text-shadow:0 0 3px #000">▲</div>'})}).addTo(tideLayer);
+    const noaaLink='https://tidesandcurrents.noaa.gov/stationhome.html?id='+id;
+    m.bindPopup('<b>🌊 '+nm+'</b><br><span style="color:#64748B">tide gauge '+id+'</span><br><span style="color:#64748B">loading…</span><br><a href="'+noaaLink+'" target="_blank" rel="noopener" style="color:#3B82F6">NOAA station →</a>');
+    // observed water level (now) + next high/low prediction
+    Promise.allSettled([
+      getJSON(base+'&product=water_level&date=latest&datum=MLLW'),
+      getJSON(base+'&product=predictions&interval=hilo&datum=MLLW&begin_date='+fmt(now)+'&end_date='+fmt(end))
+    ]).then(res=>{
+      let nowTxt='', nextTxt='';
+      const wl=res[0].value; if(wl&&wl.data&&wl.data[0]&&wl.data[0].v!=null){ const v=parseFloat(wl.data[0].v); if(isFinite(v)) nowTxt='now '+v.toFixed(1)+' ft'; }
+      const pr=res[1].value;
+      if(pr&&pr.predictions&&pr.predictions.length){
+        const nxt=pr.predictions.map(p=>({t:new Date(p.t.replace(' ','T')),v:parseFloat(p.v),hi:p.type==='H'})).filter(p=>p.t>now)[0];
+        if(nxt){ const hm=nxt.t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false}); nextTxt=(nxt.hi?'next HIGH ':'next LOW ')+nxt.v.toFixed(1)+' ft @ '+hm; }
+      }
+      m.setPopupContent('<b>🌊 '+nm+'</b><br><span style="color:#64748B">tide gauge '+id+'</span>'+
+        (nowTxt?'<br>'+nowTxt:'')+(nextTxt?'<br>'+nextTxt:'')+(!nowTxt&&!nextTxt?'<br><span style="color:#F59E0B">no data (open live https)</span>':'')+
+        '<br><a href="'+noaaLink+'" target="_blank" rel="noopener" style="color:#3B82F6">NOAA tide chart →</a>');
+    });
+  });
+  if(DBG) showTcDbg(['TIDE: '+TIDE_STATIONS.length+' NOAA CO-OPS West-Coast gauges placed','(click a ▲ for live water level + next hi/lo)']);
+}
 async function fetchWaves(){
   btn.classList.add('busy'); stamp.textContent=t('stampLoading');
   const regions=['hi','sc','gu','jp','wc','ak','gm','dart']; let ok=0,fail=0;
@@ -530,6 +580,7 @@ async function fetchWaves(){
       }catch(e){ fail+=list.length; }
     }));
     renderMarkers();
+    loadTides();
     loadTyphoons();
     loadNHC();
     loadENSO();

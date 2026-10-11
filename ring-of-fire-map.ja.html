@@ -127,7 +127,7 @@
     <span class="langlinks"><a href="ring-of-fire-map.html">EN</a><a href="ring-of-fire-map.ja.html" class="on" lang="ja">日本語</a><a href="ring-of-fire-map.es.html" lang="es">Español</a></span>
   </nav>
   <span id="status" data-i18n="stInit">initializing…</span>
-  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 29</span>
+  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 30</span>
   <button class="rf" id="refreshBtn" data-i18n="refresh">Refresh</button>
 </header>
 <div id="wrap">
@@ -186,6 +186,8 @@ const T={
   lyTyph:{en:'🌀 Typhoons (JMA RSMC)',ja:'🌀 台風（JMA RSMC）'},
   legTyph:{en:'🌀 typhoon track + forecast (JMA, W. Pacific)',ja:'🌀 台風の経路＋予報（JMA・西太平洋）'},
   lyNHC:{en:'🌀 Hurricanes (NHC/CPHC E·C Pacific)',ja:'🌀 ハリケーン（NHC/CPHC 東・中部太平洋）'},
+  lyNasaImg:{en:'🛰 Satellite imagery (NASA, daily)',ja:'🛰 衛星画像（NASA・日次）'},
+  lyNasaFire:{en:'🔥 Active fires / thermal (NASA)',ja:'🔥 火災・熱異常（NASA）'},
   legNHC:{en:'🌀 hurricane track + cone (NHC/CPHC → Mexico, US, Hawaii)',ja:'🌀 ハリケーンの経路＋予報円（NHC/CPHC → メキシコ・米国・ハワイ）'},
 };
 function t(k,v){ let s=(T[k]&&(T[k][LANG]||T[k].en))||k; if(v) for(const x in v) s=s.replace('{'+x+'}',v[x]); return s; }
@@ -214,6 +216,8 @@ const ES={
   lyTyph:'🌀 Tifones (JMA RSMC)',
   legTyph:'🌀 trayectoria + pronóstico de tifón (JMA, Pac. occ.)',
   lyNHC:'🌀 Huracanes (NHC/CPHC Pac. E·C)',
+  lyNasaImg:'🛰 Imagen satelital (NASA, diaria)',
+  lyNasaFire:'🔥 Incendios activos / térmico (NASA)',
   legNHC:'🌀 trayectoria + cono de huracán (NHC/CPHC → México, EE. UU., Hawái)',
 };
 Object.keys(ES).forEach(k=>{ if(T[k]) T[k].es=ES[k]; else T[k]={en:ES[k],ja:ES[k],es:ES[k]}; });
@@ -364,7 +368,7 @@ if(typeof L==='undefined'){
   const map=L.map('map',{minZoom:2,maxZoom:12,attributionControl:true,worldCopyJump:false}).setView([21.46,-157.97],3);
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',{
     maxZoom:16,
-    attribution:'Tiles &copy; Esri · quakes USGS · Japan JMA防災/P2P地震情報 · volcanoes GVP/USGS · aircraft airplanes.live · buoys NDBC/NOWPHAS'
+    attribution:'Tiles &copy; Esri · quakes USGS · Japan JMA防災/P2P地震情報 · volcanoes GVP/USGS · aircraft airplanes.live · buoys NDBC/NOWPHAS · NASA EOSDIS GIBS/FIRMS'
   }).addTo(map);
   L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,opacity:0.9}).addTo(map);
   setTimeout(()=>map.invalidateSize(),250);   // iOS Safari: tiles stay blank until size is recomputed
@@ -789,6 +793,12 @@ if(typeof L==='undefined'){
     }catch(e){ setStatus(t('stAircraftErr',{e:e.message})); }
   }
 
+  // NASA GIBS (keyless WMTS) — satellite true-color imagery + active-fire/thermal anomalies. Off by default.
+  const gibsDate = new Date(Date.now()-24*3600*1000).toISOString().slice(0,10); // yesterday: last complete daytime pass
+  const nasaImgLayer = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_CorrectedReflectance_TrueColor/default/'+gibsDate+'/GoogleMapsCompatible_Level9/{z}/{y}/{x}.jpg',
+    {maxNativeZoom:9,maxZoom:12,opacity:0.85,attribution:'Imagery NASA EOSDIS GIBS (VIIRS true-color, '+gibsDate+')'});
+  const nasaFireLayer = L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_SNPP_Thermal_Anomalies_375m_All/default/'+gibsDate+'/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png',
+    {maxNativeZoom:7,maxZoom:12,opacity:0.9,attribution:'Active fire / thermal anomalies NASA FIRMS via GIBS (VIIRS 375m, '+gibsDate+')'});
   const layerCtl = L.control.layers(null,{
     [t('lyGrid')]:gridLayer,
     [t('lyIDL')]:idlLayer,
@@ -801,7 +811,9 @@ if(typeof L==='undefined'){
     [t('lyCity')]:cityLayer,
     [t('lyPlane')]:planeLayer,
     [t('lyTyph')]:typhoonLayer,
-    [t('lyNHC')]:nhcLayer
+    [t('lyNHC')]:nhcLayer,
+    [t('lyNasaImg')]:nasaImgLayer,
+    [t('lyNasaFire')]:nasaFireLayer
   },{collapsed:false}).addTo(map);
   // Collapsible header so the layers panel can be closed/opened (matches Framing/Legend)
   (function(){
