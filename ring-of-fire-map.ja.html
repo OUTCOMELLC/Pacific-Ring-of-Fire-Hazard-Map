@@ -127,7 +127,7 @@
     <span class="langlinks"><a href="ring-of-fire-map.html">EN</a><a href="ring-of-fire-map.ja.html" class="on" lang="ja">日本語</a><a href="ring-of-fire-map.es.html" lang="es">Español</a></span>
   </nav>
   <span id="status" data-i18n="stInit">initializing…</span>
-  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 30</span>
+  <span style="font:700 12px/1 ui-monospace,monospace;color:#FB8102;padding:4px 9px;border:1px solid #FB8102;border-radius:6px;margin:0 8px;white-space:nowrap">rev 31</span>
   <button class="rf" id="refreshBtn" data-i18n="refresh">Refresh</button>
 </header>
 <div id="wrap">
@@ -188,6 +188,7 @@ const T={
   lyNHC:{en:'🌀 Hurricanes (NHC/CPHC E·C Pacific)',ja:'🌀 ハリケーン（NHC/CPHC 東・中部太平洋）'},
   lyNasaImg:{en:'🛰 Satellite imagery (NASA, daily)',ja:'🛰 衛星画像（NASA・日次）'},
   lyNasaFire:{en:'🔥 Active fires / thermal (NASA)',ja:'🔥 火災・熱異常（NASA）'},
+  lyTide:{en:'▲ Tide gauges (NOAA · US West Coast)',ja:'▲ 検潮所（NOAA・米国西海岸）'},
   legNHC:{en:'🌀 hurricane track + cone (NHC/CPHC → Mexico, US, Hawaii)',ja:'🌀 ハリケーンの経路＋予報円（NHC/CPHC → メキシコ・米国・ハワイ）'},
 };
 function t(k,v){ let s=(T[k]&&(T[k][LANG]||T[k].en))||k; if(v) for(const x in v) s=s.replace('{'+x+'}',v[x]); return s; }
@@ -218,6 +219,7 @@ const ES={
   lyNHC:'🌀 Huracanes (NHC/CPHC Pac. E·C)',
   lyNasaImg:'🛰 Imagen satelital (NASA, diaria)',
   lyNasaFire:'🔥 Incendios activos / térmico (NASA)',
+  lyTide:'▲ Mareógrafos (NOAA · costa oeste EE. UU.)',
   legNHC:'🌀 trayectoria + cono de huracán (NHC/CPHC → México, EE. UU., Hawái)',
 };
 Object.keys(ES).forEach(k=>{ if(T[k]) T[k].es=ES[k]; else T[k]={en:ES[k],ja:ES[k],es:ES[k]}; });
@@ -385,7 +387,7 @@ if(typeof L==='undefined'){
     html:`<div style="transform:rotate(${(h||0)-45}deg);font-size:13px;color:${C.teal};text-shadow:0 0 2px #000">✈</div>`});
 
   const volcLayer=L.layerGroup(), quakeLayer=L.layerGroup(), rofLayer=L.layerGroup(),
-        buoyLayer=L.layerGroup(), cityLayer=L.layerGroup(), planeLayer=L.layerGroup(), platformLayer=L.layerGroup(), gridLayer=L.layerGroup(), idlLayer=L.layerGroup(), jpqLayer=L.layerGroup(), typhoonLayer=L.layerGroup(), nhcLayer=L.layerGroup();
+        buoyLayer=L.layerGroup(), cityLayer=L.layerGroup(), planeLayer=L.layerGroup(), platformLayer=L.layerGroup(), gridLayer=L.layerGroup(), idlLayer=L.layerGroup(), jpqLayer=L.layerGroup(), typhoonLayer=L.layerGroup(), nhcLayer=L.layerGroup(), tideLayer=L.layerGroup();
 
   // Ring of Fire schematic
   L.polyline(ROF.map(p=>[p[0],PL(p[1])]),{color:C.orange,weight:1.5,dashArray:'7 7',opacity:.55}).addTo(rofLayer);
@@ -750,6 +752,52 @@ if(typeof L==='undefined'){
     el.style.color=ensoColor(ph);
   }
 
+/* ===== NOAA CO-OPS tide gauges — US West Coast (public API, no key, CORS-open) ===== */
+const TIDE_STATIONS=[
+  ['9449880','Friday Harbor, WA',48.546,-123.013],['9447130','Seattle, WA',47.603,-122.339],
+  ['9444900','Port Townsend, WA',48.113,-122.759],['9440910','Toke Point, WA',46.707,-123.967],
+  ['9439040','Astoria, OR',46.207,-123.768],['9435380','South Beach, OR',44.625,-124.044],
+  ['9432780','Charleston, OR',43.345,-124.322],['9419750','Crescent City, CA',41.745,-124.184],
+  ['9418767','Humboldt Bay, CA',40.767,-124.217],['9415020','Point Reyes, CA',37.996,-122.976],
+  ['9414290','San Francisco, CA',37.807,-122.466],['9413450','Monterey, CA',36.605,-121.888],
+  ['9412110','Port San Luis, CA',35.169,-120.754],['9411340','Santa Barbara, CA',34.408,-119.685],
+  ['9410840','Santa Monica, CA',34.008,-118.500],['9410660','Los Angeles, CA',33.720,-118.272],
+  ['9410230','La Jolla, CA',32.867,-117.257],['9410170','San Diego, CA',32.714,-117.173]
+];
+function tideArrow(rising){ return rising==null?'↕':rising?'▲':'▼'; }
+async function loadTides(){
+  if(typeof tideLayer==='undefined') return; tideLayer.clearLayers();
+  const DBG=/tidedebug/i.test(location.hash||'');
+  const fmt=d=>d.getUTCFullYear()+(''+(d.getUTCMonth()+1)).padStart(2,'0')+(''+d.getUTCDate()).padStart(2,'0');
+  const now=new Date(), end=new Date(now.getTime()+24*3600*1000);
+  const TC='#A78BFA';  // violet — distinct from wave/typhoon/NHC colors
+  TIDE_STATIONS.forEach(([id,nm,la,lo])=>{
+    const base='https://api.tidesandcurrents.noaa.gov/api/prod/datagetter?application=buoy-map&station='+id+'&time_zone=lst_ldt&units=english&format=json';
+    // marker drawn immediately; popup enriched after fetch
+    const m=L.marker([la,PL(lo)],{icon:L.divIcon({className:'',iconSize:[16,16],iconAnchor:[8,8],
+      html:'<div style="color:'+TC+';font-size:15px;line-height:1;text-shadow:0 0 3px #000">▲</div>'})}).addTo(tideLayer);
+    const noaaLink='https://tidesandcurrents.noaa.gov/stationhome.html?id='+id;
+    m.bindPopup('<b>🌊 '+nm+'</b><br><span style="color:#64748B">tide gauge '+id+'</span><br><span style="color:#64748B">loading…</span><br><a href="'+noaaLink+'" target="_blank" rel="noopener" style="color:#3B82F6">NOAA station →</a>');
+    // observed water level (now) + next high/low prediction
+    Promise.allSettled([
+      getJSON(base+'&product=water_level&date=latest&datum=MLLW'),
+      getJSON(base+'&product=predictions&interval=hilo&datum=MLLW&begin_date='+fmt(now)+'&end_date='+fmt(end))
+    ]).then(res=>{
+      let nowTxt='', nextTxt='';
+      const wl=res[0].value; if(wl&&wl.data&&wl.data[0]&&wl.data[0].v!=null){ const v=parseFloat(wl.data[0].v); if(isFinite(v)) nowTxt='now '+v.toFixed(1)+' ft'; }
+      const pr=res[1].value;
+      if(pr&&pr.predictions&&pr.predictions.length){
+        const nxt=pr.predictions.map(p=>({t:new Date(p.t.replace(' ','T')),v:parseFloat(p.v),hi:p.type==='H'})).filter(p=>p.t>now)[0];
+        if(nxt){ const hm=nxt.t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:false}); nextTxt=(nxt.hi?'next HIGH ':'next LOW ')+nxt.v.toFixed(1)+' ft @ '+hm; }
+      }
+      m.setPopupContent('<b>🌊 '+nm+'</b><br><span style="color:#64748B">tide gauge '+id+'</span>'+
+        (nowTxt?'<br>'+nowTxt:'')+(nextTxt?'<br>'+nextTxt:'')+(!nowTxt&&!nextTxt?'<br><span style="color:#F59E0B">no data (open live https)</span>':'')+
+        '<br><a href="'+noaaLink+'" target="_blank" rel="noopener" style="color:#3B82F6">NOAA tide chart →</a>');
+    });
+  });
+  if(DBG) showTcDbg(['TIDE: '+TIDE_STATIONS.length+' NOAA CO-OPS West-Coast gauges placed','(click a ▲ for live water level + next hi/lo)']);
+}
+
   // Jアラート-class tsunami warnings — JMA 防災 (津波予報) via P2P地震情報, code 552.
   // (Civil-protection / missile alerts have no public API and are intentionally not shown.)
   function loadTsunami(){
@@ -813,7 +861,8 @@ if(typeof L==='undefined'){
     [t('lyTyph')]:typhoonLayer,
     [t('lyNHC')]:nhcLayer,
     [t('lyNasaImg')]:nasaImgLayer,
-    [t('lyNasaFire')]:nasaFireLayer
+    [t('lyNasaFire')]:nasaFireLayer,
+    [t('lyTide')]:tideLayer
   },{collapsed:false}).addTo(map);
   // Collapsible header so the layers panel can be closed/opened (matches Framing/Legend)
   (function(){
@@ -829,7 +878,7 @@ if(typeof L==='undefined'){
   })();
 
   // default-on layers
-  [gridLayer,idlLayer,volcLayer,quakeLayer,jpqLayer,rofLayer,buoyLayer,platformLayer,cityLayer,typhoonLayer,nhcLayer].forEach(l=>l.addTo(map));
+  [gridLayer,idlLayer,volcLayer,quakeLayer,jpqLayer,rofLayer,buoyLayer,platformLayer,cityLayer,typhoonLayer,nhcLayer,tideLayer].forEach(l=>l.addTo(map));
 
   map.on('overlayadd',e=>{ if(e.layer===planeLayer) loadPlanes(); });
 
@@ -842,6 +891,7 @@ if(typeof L==='undefined'){
     let jn=0; try{ jn=await loadJapanQuakes(); }catch(e){}
     let tn=0; try{ tn=await loadTyphoons(); }catch(e){ tn=-1; }
     let hn=0; try{ hn=await loadNHC(); }catch(e){ hn=0; }
+    loadTides();
     loadENSO();
     loadTsunami();
     if(map.hasLayer(planeLayer)) loadPlanes();
